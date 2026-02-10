@@ -1,12 +1,9 @@
-'use client';
-
-import { useTranslations } from 'next-intl';
-
-export default function Home() {
-	const t = useTranslations('HomePage');
-	return (
-		<main>
-			<h1>{t('title')}</h1>
-		</main>
-	);
+import { getCurrentUser } from "../actions/auth";
+export default async function Home() {
+  const user = await getCurrentUser();
+  return (
+    <main>
+      <p>Salut {user?.pseudo}</p>
+    </main>
+  );
 }

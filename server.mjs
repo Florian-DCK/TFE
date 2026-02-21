@@ -118,6 +118,10 @@ io.on("connection", (socket) => {
   socket.emit("server_info", { rev: SERVER_REV });
   socket.emit("maps_list", { maps: listMapsMetadata() });
 
+  socket.on("request_maps_list", () => {
+    socket.emit("maps_list", { maps: listMapsMetadata() });
+  });
+
   socket.onAny((eventName) => {
     if (eventName === "submit_action") return;
     console.log(JSON.stringify({ event: "socket_event", name: eventName, socketId: socket.id }));
@@ -125,6 +129,7 @@ io.on("connection", (socket) => {
 
   socket.on("join_lobby", async ({ lobbyCode, name }) => {
     if (!lobbyCode) return;
+    socket.emit("maps_list", { maps: listMapsMetadata() });
 
     const existingGameCode = lobbyToGameCode.get(lobbyCode);
     const existing = existingGameCode
@@ -344,6 +349,28 @@ io.on("connection", (socket) => {
         reason: error instanceof Error ? error.message : "Action rejected.",
       });
     }
+  });
+
+  socket.on("action_intent", ({ gameCode, intent }) => {
+    const code = gameCode || socket.data.gameCode;
+    const playerId = socket.data.gamePlayerId;
+    if (!code || !playerId || !intent || typeof intent !== "object") return;
+
+    const fromTerritoryKey =
+      typeof intent.fromTerritoryKey === "string" ? intent.fromTerritoryKey : null;
+    const toTerritoryKey =
+      typeof intent.toTerritoryKey === "string" ? intent.toTerritoryKey : null;
+    const phase = typeof intent.phase === "string" ? intent.phase : null;
+    const kind = intent.kind === "clear" ? "clear" : "select";
+
+    socket.to(`game:${code}`).emit("opponent_intent", {
+      gameCode: code,
+      playerId,
+      phase,
+      kind,
+      fromTerritoryKey,
+      toTerritoryKey,
+    });
   });
 
   socket.on("disconnect", async () => {

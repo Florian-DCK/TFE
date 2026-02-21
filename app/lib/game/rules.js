@@ -1,7 +1,8 @@
 export const MIN_REINFORCEMENTS = 3;
 
-export function computeReinforcements() {
-  return MIN_REINFORCEMENTS;
+export function computeReinforcements(ownedTerritories, continentBonus = 0) {
+  const base = Math.max(MIN_REINFORCEMENTS, Math.floor(Math.max(0, ownedTerritories) / 3));
+  return base + Math.max(0, continentBonus);
 }
 
 function rollDie() {

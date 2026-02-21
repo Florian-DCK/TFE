@@ -3,6 +3,14 @@
   "name": "Monde simplifie",
   "version": 1,
   "viewBox": "0 0 1024 560",
+  "continents": [
+    { "key": "north_america", "name": "Amerique du Nord", "bonus": 5, "color": "#f59e0b" },
+    { "key": "south_america", "name": "Amerique du Sud", "bonus": 2, "color": "#f97316" },
+    { "key": "europe", "name": "Europe", "bonus": 5, "color": "#8b5cf6" },
+    { "key": "africa", "name": "Afrique", "bonus": 3, "color": "#14b8a6" },
+    { "key": "asia", "name": "Asie", "bonus": 7, "color": "#84cc16" },
+    { "key": "australia", "name": "Australie", "bonus": 2, "color": "#ec4899" }
+  ],
   "territories": [
     {
       "key": "alaska",

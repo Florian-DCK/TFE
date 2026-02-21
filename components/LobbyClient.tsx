@@ -26,6 +26,7 @@ export default function LobbyClient({
   useEffect(() => {
     const s = getSocket();
 
+    s.emit("request_maps_list");
     s.emit("join_lobby", { lobbyCode: code, name: displayName });
 
     const onLobbyState = (payload: {

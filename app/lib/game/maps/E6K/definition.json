@@ -1,0 +1,245 @@
+{
+  "mapKey": "E6K",
+  "name": "E6K",
+  "version": 1,
+  "viewBox": "0 0 1024 560",
+  "continents": [
+    {
+      "key": "rdc",
+      "name": "Rez-de-chaussee",
+      "bonus": 3,
+      "color": "#f59e0b"
+    },
+    {
+      "key": "etage",
+      "name": "Etage",
+      "bonus": 3,
+      "color": "#3b82f6"
+    }
+  ],
+  "territories": [
+    {
+      "key": "hall_rdc",
+      "name": "Hall RDC",
+      "continent": "rdc",
+      "adjacency": [
+        "secretariat",
+        "grande_salle_rdc",
+        "salle_fond_droite_rdc",
+        "salle_fond_gauche_rdc",
+        "debarras_rdc",
+        "hall_etage"
+      ],
+      "svgId": "t-hall_rdc",
+      "pathData": "M443.5 212.5H282V265.5H304.95V292H282V346H443.5V212.5Z",
+      "centroid": {
+        "x": 362.75,
+        "y": 279.25
+      }
+    },
+    {
+      "key": "secretariat",
+      "name": "Secretariat",
+      "continent": "rdc",
+      "adjacency": [
+        "hall_rdc"
+      ],
+      "svgId": "t-secretariat",
+      "pathData": "M362 212.5H282V172H362V212.5Z",
+      "centroid": {
+        "x": 322,
+        "y": 192.25
+      }
+    },
+    {
+      "key": "grande_salle_rdc",
+      "name": "Grande salle RDC",
+      "continent": "rdc",
+      "adjacency": [
+        "hall_rdc"
+      ],
+      "svgId": "t-grande_salle_rdc",
+      "pathData": "M443.5 387.5H282V346.5L443.5 346.211V387.5Z",
+      "centroid": {
+        "x": 362.75,
+        "y": 366.86
+      }
+    },
+    {
+      "key": "salle_fond_droite_rdc",
+      "name": "Salle fond droite RDC",
+      "continent": "rdc",
+      "adjacency": [
+        "hall_rdc"
+      ],
+      "svgId": "t-salle_fond_droite_rdc",
+      "pathData": "M484 277.5L484 387.5L443.287 387.5L443 277.5L484 277.5Z",
+      "centroid": {
+        "x": 463.5,
+        "y": 332.5
+      }
+    },
+    {
+      "key": "salle_fond_gauche_rdc",
+      "name": "Salle fond gauche RDC",
+      "continent": "rdc",
+      "adjacency": [
+        "hall_rdc"
+      ],
+      "svgId": "t-salle_fond_gauche_rdc",
+      "pathData": "M484 172.5L484 277.5L443.287 277.5L443 172.5L484 172.5Z",
+      "centroid": {
+        "x": 463.5,
+        "y": 225
+      }
+    },
+    {
+      "key": "debarras_rdc",
+      "name": "Debarras RDC",
+      "continent": "rdc",
+      "adjacency": [
+        "hall_rdc"
+      ],
+      "svgId": "t-debarras_rdc",
+      "pathData": "M443.5 212.5H362V172H443.5V212.5Z",
+      "centroid": {
+        "x": 402.75,
+        "y": 192.25
+      }
+    },
+    {
+      "key": "hall_etage",
+      "name": "Hall etage",
+      "continent": "etage",
+      "adjacency": [
+        "hall_rdc",
+        "salle_haut_gauche_etage",
+        "salle_haut_droite_etage",
+        "salle_droite_bas_etage",
+        "salle_droite_haut_etage",
+        "salle_gauche_bas_etage",
+        "salle_gauche_haut_etage",
+        "salle_bas_gauche_etage",
+        "salle_bas_droite_etage"
+      ],
+      "svgId": "t-hall_etage",
+      "pathData": "M700.5 212.5H561.95V265.5L561.95 292V346H700.5V212.5Z",
+      "centroid": {
+        "x": 631.23,
+        "y": 279.25
+      }
+    },
+    {
+      "key": "salle_haut_gauche_etage",
+      "name": "Salle haut gauche etage",
+      "continent": "etage",
+      "adjacency": [
+        "hall_etage"
+      ],
+      "svgId": "t-salle_haut_gauche_etage",
+      "pathData": "M631 212.5H562V172H631V212.5Z",
+      "centroid": {
+        "x": 596.5,
+        "y": 192.25
+      }
+    },
+    {
+      "key": "salle_haut_droite_etage",
+      "name": "Salle haut droite etage",
+      "continent": "etage",
+      "adjacency": [
+        "hall_etage"
+      ],
+      "svgId": "t-salle_haut_droite_etage",
+      "pathData": "M700.5 212.5H631V172H700.5V212.5Z",
+      "centroid": {
+        "x": 665.75,
+        "y": 192.25
+      }
+    },
+    {
+      "key": "salle_droite_bas_etage",
+      "name": "Salle droite bas etage",
+      "continent": "etage",
+      "adjacency": [
+        "hall_etage"
+      ],
+      "svgId": "t-salle_droite_bas_etage",
+      "pathData": "M741 277.5L741 387.5L700.287 387.5L700 277.5L741 277.5Z",
+      "centroid": {
+        "x": 720.5,
+        "y": 332.5
+      }
+    },
+    {
+      "key": "salle_droite_haut_etage",
+      "name": "Salle droite haut etage",
+      "continent": "etage",
+      "adjacency": [
+        "hall_etage"
+      ],
+      "svgId": "t-salle_droite_haut_etage",
+      "pathData": "M741 172.5L741 277.5L700.287 277.5L700 172.5L741 172.5Z",
+      "centroid": {
+        "x": 720.5,
+        "y": 225
+      }
+    },
+    {
+      "key": "salle_gauche_bas_etage",
+      "name": "Salle gauche bas etage",
+      "continent": "etage",
+      "adjacency": [
+        "hall_etage"
+      ],
+      "svgId": "t-salle_gauche_bas_etage",
+      "pathData": "M562 277.5L562 387.5L521.287 387.5L521 277.5L562 277.5Z",
+      "centroid": {
+        "x": 541.5,
+        "y": 332.5
+      }
+    },
+    {
+      "key": "salle_gauche_haut_etage",
+      "name": "Salle gauche haut etage",
+      "continent": "etage",
+      "adjacency": [
+        "hall_etage"
+      ],
+      "svgId": "t-salle_gauche_haut_etage",
+      "pathData": "M562 172.5L562 277.5L521.287 277.5L521 172.5L562 172.5Z",
+      "centroid": {
+        "x": 541.5,
+        "y": 225
+      }
+    },
+    {
+      "key": "salle_bas_gauche_etage",
+      "name": "Salle bas gauche etage",
+      "continent": "etage",
+      "adjacency": [
+        "hall_etage"
+      ],
+      "svgId": "t-salle_bas_gauche_etage",
+      "pathData": "M631 387H562V346.5H631V387Z",
+      "centroid": {
+        "x": 596.5,
+        "y": 366.75
+      }
+    },
+    {
+      "key": "salle_bas_droite_etage",
+      "name": "Salle bas droite etage",
+      "continent": "etage",
+      "adjacency": [
+        "hall_etage"
+      ],
+      "svgId": "t-salle_bas_droite_etage",
+      "pathData": "M700.5 387H631V346.5H700.5V387Z",
+      "centroid": {
+        "x": 665.75,
+        "y": 366.75
+      }
+    }
+  ]
+}

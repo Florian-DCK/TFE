@@ -2,7 +2,6 @@ import { z } from "zod";
 import { loadMapDefinition, listAvailableMaps } from "./maps/index.js";
 import {
   canAttack,
-  canFortify,
   checkVictory,
   computeReinforcements,
   resolveAttack,
@@ -13,6 +12,7 @@ export const submitActionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("place_reinforcement"),
     territoryKey: z.string().min(1),
+    troops: z.number().int().min(1).optional(),
   }),
   z.object({
     type: z.literal("attack"),
@@ -70,6 +70,64 @@ function resolveCurrentPhase(game, actionLogs, currentTurnPlayerId) {
   );
   const attackPhaseEnded = currentTurnLogs.some((log) => log.type === "end_attack_phase");
   return attackPhaseEnded ? "fortify" : "attack";
+}
+
+function hasAlliedPath(from, to, currentPlayerId, territoryByKey, adjacencyByKey) {
+  if (!from || !to) return false;
+  if (from.ownerPlayerId !== currentPlayerId || to.ownerPlayerId !== currentPlayerId) return false;
+  if (from.territoryKey === to.territoryKey) return true;
+
+  const visited = new Set([from.territoryKey]);
+  const queue = [from.territoryKey];
+
+  while (queue.length > 0) {
+    const key = queue.shift();
+    const neighbors = adjacencyByKey.get(key) ?? new Set();
+    for (const neighborKey of neighbors) {
+      if (visited.has(neighborKey)) continue;
+      const neighbor = territoryByKey.get(neighborKey);
+      if (!neighbor || neighbor.ownerPlayerId !== currentPlayerId) continue;
+      if (neighborKey === to.territoryKey) return true;
+      visited.add(neighborKey);
+      queue.push(neighborKey);
+    }
+  }
+  return false;
+}
+
+function toContinentBonusMap(mapDefinition) {
+  const bonusMap = new Map();
+  for (const continent of mapDefinition?.continents ?? []) {
+    bonusMap.set(continent.key, continent.bonus);
+  }
+  return bonusMap;
+}
+
+function computeContinentBonusForPlayer(playerId, territoriesWithContinent, continentBonusMap) {
+  if (!playerId) return 0;
+
+  const ownerByContinent = new Map();
+  for (const territory of territoriesWithContinent) {
+    if (!territory.continent) continue;
+    const list = ownerByContinent.get(territory.continent) ?? [];
+    list.push(territory.ownerPlayerId);
+    ownerByContinent.set(territory.continent, list);
+  }
+
+  let bonus = 0;
+  for (const [continentKey, owners] of ownerByContinent.entries()) {
+    if (owners.length === 0) continue;
+    if (owners.every((ownerId) => ownerId === playerId)) {
+      bonus += continentBonusMap.get(continentKey) ?? 0;
+    }
+  }
+  return bonus;
+}
+
+function computeReinforcementsForPlayer(playerId, territoriesWithContinent, continentBonusMap) {
+  const ownedTerritories = territoriesWithContinent.filter((territory) => territory.ownerPlayerId === playerId).length;
+  const continentBonus = computeContinentBonusForPlayer(playerId, territoriesWithContinent, continentBonusMap);
+  return computeReinforcements(ownedTerritories, continentBonus);
 }
 
 export function getDefaultMapKey() {
@@ -185,6 +243,8 @@ export async function createGameFromLobby(prisma, lobbyCode, lobbyMembers, mapKe
   if (!map || !map.isActive) {
     throw new Error(`Map \"${mapKey}\" is not available.`);
   }
+  const mapDefinition = loadMapDefinition(map.key);
+  const continentBonusMap = toContinentBonusMap(mapDefinition);
 
   let code = randomCode(6);
   while (await prisma.game.findUnique({ where: { code } })) {
@@ -209,7 +269,7 @@ export async function createGameFromLobby(prisma, lobbyCode, lobbyMembers, mapKe
         seat: index + 1,
         isAlive: true,
         isConnected: true,
-        reinforcements: index === 0 ? computeReinforcements() : 0,
+        reinforcements: 0,
       })),
       select: { id: true, seat: true },
     });
@@ -221,16 +281,39 @@ export async function createGameFromLobby(prisma, lobbyCode, lobbyMembers, mapKe
       data: { currentTurnPlayerId: createdPlayers[0].id },
     });
 
-    await tx.gameTerritoryState.createMany({
-      data: map.territories.map((territory, index) => {
+    const initialTerritories = map.territories.map((territory, index) => {
         const owner = createdPlayers[index % createdPlayers.length];
         return {
           gameId: created.id,
           mapTerritoryId: territory.id,
+          continent: territory.continent,
           ownerPlayerId: owner.id,
           troops: 1,
         };
-      }),
+      });
+
+    await tx.gameTerritoryState.createMany({
+      data: initialTerritories.map((territory) => ({
+        gameId: territory.gameId,
+        mapTerritoryId: territory.mapTerritoryId,
+        ownerPlayerId: territory.ownerPlayerId,
+        troops: territory.troops,
+      })),
+    });
+
+    const firstPlayerId = createdPlayers[0].id;
+    const firstPlayerReinforcements = computeReinforcementsForPlayer(
+      firstPlayerId,
+      initialTerritories.map((territory) => ({
+        ownerPlayerId: territory.ownerPlayerId,
+        continent: territory.continent,
+      })),
+      continentBonusMap,
+    );
+
+    await tx.gamePlayer.update({
+      where: { id: firstPlayerId },
+      data: { reinforcements: firstPlayerReinforcements },
     });
 
     await tx.gameActionLog.create({
@@ -273,6 +356,7 @@ export async function getGameStateDTOWithOptions(
     },
   });
   if (!game || !game.map) return null;
+  const mapDefinition = loadMapDefinition(game.map.key);
   const currentPhase = resolveCurrentPhase(game, game.actionLogs, game.currentTurnPlayerId);
 
   const territoryCounts = new Map();
@@ -287,6 +371,12 @@ export async function getGameStateDTOWithOptions(
       key: game.map.key,
       name: game.map.name,
       viewBox: game.map.svgViewBox,
+      continents: (mapDefinition.continents ?? []).map((continent) => ({
+        key: continent.key,
+        name: continent.name,
+        bonus: continent.bonus,
+        color: continent.color ?? null,
+      })),
     },
     status: game.status,
     turnNumber: game.turnNumber,
@@ -344,6 +434,7 @@ export async function applyAction(prisma, gameCode, playerId, action) {
     const game = await tx.game.findUnique({
       where: { code: gameCode },
       include: {
+        map: true,
         players: { orderBy: { seat: "asc" } },
         actionLogs: { orderBy: { createdAt: "asc" }, take: 300 },
         territories: {
@@ -355,7 +446,10 @@ export async function applyAction(prisma, gameCode, playerId, action) {
       },
     });
     if (!game) throw new Error("Game not found.");
+    if (!game.map) throw new Error("Map not found.");
     if (game.status !== "in_progress") throw new Error("Game is not in progress.");
+    const mapDefinition = loadMapDefinition(game.map.key);
+    const continentBonusMap = toContinentBonusMap(mapDefinition);
 
     const actingPlayer = game.players.find((p) => p.id === playerId);
     if (!actingPlayer) throw new Error("Player not found in this game.");
@@ -410,26 +504,30 @@ export async function applyAction(prisma, gameCode, playerId, action) {
       if (!target || target.ownerPlayerId !== actingPlayer.id) {
         throw new Error("You can only reinforce your territory.");
       }
+      const troopsToPlace = Math.min(
+        Math.max(1, actionInput.troops ?? 1),
+        actingPlayer.reinforcements,
+      );
       await tx.gameTerritoryState.update({
         where: { id: target.id },
-        data: { troops: { increment: 1 } },
+        data: { troops: { increment: troopsToPlace } },
       });
       await tx.gamePlayer.update({
         where: { id: actingPlayer.id },
-        data: { reinforcements: { decrement: 1 } },
+        data: { reinforcements: { decrement: troopsToPlace } },
       });
       const log = await writeLog("place_reinforcement", {
         territoryKey: actionInput.territoryKey,
-        troops: 1,
+        troops: troopsToPlace,
       });
       return {
         type: "ok",
         log: toActionLogDTO(log),
         patch: {
           gameCode,
-          currentPhase: actingPlayer.reinforcements - 1 > 0 ? "reinforce" : "attack",
-          players: [{ id: actingPlayer.id, reinforcements: actingPlayer.reinforcements - 1 }],
-          territories: [{ territoryKey: actionInput.territoryKey, troops: target.troops + 1 }],
+          currentPhase: actingPlayer.reinforcements - troopsToPlace > 0 ? "reinforce" : "attack",
+          players: [{ id: actingPlayer.id, reinforcements: actingPlayer.reinforcements - troopsToPlace }],
+          territories: [{ territoryKey: actionInput.territoryKey, troops: target.troops + troopsToPlace }],
         },
       };
     }
@@ -553,8 +651,13 @@ export async function applyAction(prisma, gameCode, playerId, action) {
       }
       const from = territoryByKey.get(actionInput.fromTerritoryKey);
       const to = territoryByKey.get(actionInput.toTerritoryKey);
-      const adjacencySet = adjacencyByKey.get(actionInput.fromTerritoryKey) ?? new Set();
-      if (!canFortify(from, to, actingPlayer.id, adjacencySet, actionInput.troops)) {
+      if (!from || !to) throw new Error("Invalid fortify move.");
+      if (actionInput.troops < 1) throw new Error("Invalid fortify move.");
+      if (from.ownerPlayerId !== actingPlayer.id || to.ownerPlayerId !== actingPlayer.id) {
+        throw new Error("Invalid fortify move.");
+      }
+      if (from.troops <= actionInput.troops) throw new Error("Invalid fortify move.");
+      if (!hasAlliedPath(from, to, actingPlayer.id, territoryByKey, adjacencyByKey)) {
         throw new Error("Invalid fortify move.");
       }
       await tx.gameTerritoryState.update({
@@ -575,9 +678,21 @@ export async function applyAction(prisma, gameCode, playerId, action) {
           turnNumber: { increment: 1 },
         },
       });
+      const territoriesAfterFortify = await tx.gameTerritoryState.findMany({
+        where: { gameId: game.id },
+        include: { mapTerritory: true, territory: true },
+      });
+      const upcomingReinforcements = computeReinforcementsForPlayer(
+        upcoming.id,
+        territoriesAfterFortify.map((territory) => ({
+          ownerPlayerId: territory.ownerPlayerId,
+          continent: territory.mapTerritory?.continent ?? territory.territory?.continent ?? null,
+        })),
+        continentBonusMap,
+      );
       await tx.gamePlayer.update({
         where: { id: upcoming.id },
-        data: { reinforcements: computeReinforcements() },
+        data: { reinforcements: upcomingReinforcements },
       });
       await tx.gameActionLog.create({
         data: {
@@ -599,7 +714,7 @@ export async function applyAction(prisma, gameCode, playerId, action) {
           players: [
             {
               id: upcoming.id,
-              reinforcements: computeReinforcements(),
+              reinforcements: upcomingReinforcements,
             },
           ],
           territories: [
@@ -642,9 +757,21 @@ export async function applyAction(prisma, gameCode, playerId, action) {
           turnNumber: { increment: 1 },
         },
       });
+      const territoriesBeforeNextTurn = await tx.gameTerritoryState.findMany({
+        where: { gameId: game.id },
+        include: { mapTerritory: true, territory: true },
+      });
+      const upcomingReinforcements = computeReinforcementsForPlayer(
+        upcoming.id,
+        territoriesBeforeNextTurn.map((territory) => ({
+          ownerPlayerId: territory.ownerPlayerId,
+          continent: territory.mapTerritory?.continent ?? territory.territory?.continent ?? null,
+        })),
+        continentBonusMap,
+      );
       await tx.gamePlayer.update({
         where: { id: upcoming.id },
-        data: { reinforcements: computeReinforcements() },
+        data: { reinforcements: upcomingReinforcements },
       });
       const log = await writeLog("end_turn", { nextPlayerId: upcoming.id });
       return {
@@ -656,7 +783,7 @@ export async function applyAction(prisma, gameCode, playerId, action) {
           turnNumber: game.turnNumber + 1,
           currentTurnPlayerId: upcoming.id,
           currentPhase: "reinforce",
-          players: [{ id: upcoming.id, reinforcements: computeReinforcements() }],
+          players: [{ id: upcoming.id, reinforcements: upcomingReinforcements }],
         },
       };
     }

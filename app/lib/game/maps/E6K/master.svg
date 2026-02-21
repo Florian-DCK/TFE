@@ -1,0 +1,17 @@
+<svg width="1024" height="560" viewBox="0 0 1024 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path id="t-hall_rdc" d="M443.5 212.5H282V265.5H304.95V292H282V346H443.5V212.5Z" stroke="black"/>
+<path id="t-secretariat" d="M362 212.5H282V172H362V212.5Z" stroke="black"/>
+<path id="t-grande_salle_rdc" d="M443.5 387.5H282V346.5L443.5 346.211V387.5Z" stroke="black"/>
+<path id="t-salle_fond_droite_rdc" d="M484 277.5L484 387.5L443.287 387.5L443 277.5L484 277.5Z" stroke="black"/>
+<path id="t-salle_fond_gauche_rdc" d="M484 172.5L484 277.5L443.287 277.5L443 172.5L484 172.5Z" stroke="black"/>
+<path id="t-debarras_rdc" d="M443.5 212.5H362V172H443.5V212.5Z" stroke="black"/>
+<path id="t-hall_etage" d="M700.5 212.5H561.95V265.5L561.95 292V346H700.5V212.5Z" stroke="black"/>
+<path id="t-salle_haut_gauche_etage" d="M631 212.5H562V172H631V212.5Z" stroke="black"/>
+<path id="t-salle_droite_bas_etage" d="M741 277.5L741 387.5L700.287 387.5L700 277.5L741 277.5Z" stroke="black"/>
+<path id="t-salle_droite_haut_etage" d="M741 172.5L741 277.5L700.287 277.5L700 172.5L741 172.5Z" stroke="black"/>
+<path id="t-salle_gauche_bas_etage" d="M562 277.5L562 387.5L521.287 387.5L521 277.5L562 277.5Z" stroke="black"/>
+<path id="t-salle_gauche_haut_etage" d="M562 172.5L562 277.5L521.287 277.5L521 172.5L562 172.5Z" stroke="black"/>
+<path id="t-salle_haut_droite_etage" d="M700.5 212.5H631V172H700.5V212.5Z" stroke="black"/>
+<path id="t-salle_bas_gauche_etage" d="M631 387H562V346.5H631V387Z" stroke="black"/>
+<path id="t-salle_bas_droite_etage" d="M700.5 387H631V346.5H700.5V387Z" stroke="black"/>
+</svg>

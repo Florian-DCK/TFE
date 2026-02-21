@@ -12,7 +12,7 @@ function toText(log: ActionLogDTO) {
     return `attaque de ${String(payload.fromTerritoryKey ?? "?")} vers ${String(payload.toTerritoryKey ?? "?")}`;
   }
   if (log.type === "place_reinforcement") {
-    return `+1 renfort sur ${String(payload.territoryKey ?? "?")}`;
+    return `+${String(payload.troops ?? 1)} renfort sur ${String(payload.territoryKey ?? "?")}`;
   }
   if (log.type === "fortify") {
     return `fortification ${String(payload.fromTerritoryKey ?? "?")} -> ${String(payload.toTerritoryKey ?? "?")}`;

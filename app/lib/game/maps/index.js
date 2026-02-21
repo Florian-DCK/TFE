@@ -20,8 +20,20 @@ const mapDefinitionSchema = z.object({
   name: z.string().min(1),
   version: z.number().int().positive(),
   viewBox: z.string().min(1),
+  continents: z
+    .array(
+      z.object({
+        key: z.string().min(1),
+        name: z.string().min(1),
+        bonus: z.number().int().min(1),
+        color: z.string().min(1).nullable().optional(),
+      }),
+    )
+    .min(1),
   territories: z.array(mapTerritorySchema).min(1),
 });
+
+const definitionCache = new Map();
 
 function mapsRoot() {
   return path.join(process.cwd(), "app", "lib", "game", "maps");
@@ -88,6 +100,14 @@ export function validateMapDefinition(definition) {
   validateSymmetry(parsed.territories);
   validateGraphConnectivity(parsed.territories);
 
+  const continentByKey = new Map(parsed.continents.map((continent) => [continent.key, continent]));
+  for (const territory of parsed.territories) {
+    if (!territory.continent) continue;
+    if (!continentByKey.has(territory.continent)) {
+      throw new Error(`Territory "${territory.key}" references unknown continent "${territory.continent}".`);
+    }
+  }
+
   const mapFolder = path.join(mapsRoot(), parsed.mapKey);
   const masterSvgPath = path.join(mapFolder, "master.svg");
   if (fs.existsSync(masterSvgPath)) {
@@ -120,7 +140,15 @@ export function loadMapDefinition(mapKey) {
   if (!fs.existsSync(filePath)) {
     throw new Error(`Unknown map key "${mapKey}".`);
   }
+  const stat = fs.statSync(filePath);
+  const cached = definitionCache.get(mapKey);
+  if (cached && cached.mtimeMs === stat.mtimeMs) {
+    return cached.definition;
+  }
+
   const raw = fs.readFileSync(filePath, "utf8");
   const json = JSON.parse(raw);
-  return validateMapDefinition(json);
+  const definition = validateMapDefinition(json);
+  definitionCache.set(mapKey, { mtimeMs: stat.mtimeMs, definition });
+  return definition;
 }

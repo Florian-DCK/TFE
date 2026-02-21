@@ -65,6 +65,12 @@ export type GameStateDTO = {
     key: string;
     name: string;
     viewBox: string;
+    continents: Array<{
+      key: string;
+      name: string;
+      bonus: number;
+      color: string | null;
+    }>;
   };
   status: "waiting" | "in_progress" | "finished";
   turnNumber: number;
@@ -81,6 +87,7 @@ export const submitActionSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("place_reinforcement"),
     territoryKey: z.string().min(1),
+    troops: z.number().int().min(1).optional(),
   }),
   z.object({
     type: z.literal("attack"),
@@ -109,4 +116,12 @@ export type ServerEventPayloads = {
   game_finished: { gameCode: string; winnerPlayerId: string | null };
   joined_game: { gameCode: string; playerId: string; displayName: string };
   action_log: ActionLogDTO;
+  opponent_intent: {
+    gameCode: string;
+    playerId: string;
+    phase: string | null;
+    kind: "select" | "clear";
+    fromTerritoryKey: string | null;
+    toTerritoryKey: string | null;
+  };
 };

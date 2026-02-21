@@ -9,6 +9,10 @@ generator client {
   output   = "../app/generated/prisma"
 }
 
+generator client_js {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -21,4 +25,134 @@ model User {
   password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  gamePlayers GamePlayer[]
+}
+
+model Game {
+  id                  String               @id @default(cuid())
+  code                String               @unique
+  lobbyCode           String
+  mapId               String?
+  status              GameStatus           @default(waiting)
+  currentTurnPlayerId String?
+  winnerPlayerId      String?
+  turnNumber          Int                  @default(1)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  map         MapDefinition?        @relation(fields: [mapId], references: [id], onDelete: SetNull)
+  players     GamePlayer[]
+  territories GameTerritoryState[]
+  actionLogs  GameActionLog[]
+
+  @@index([status])
+  @@index([lobbyCode])
+  @@index([mapId])
+}
+
+model GamePlayer {
+  id             String   @id @default(cuid())
+  gameId         String
+  userId         String?
+  displayName    String
+  seat           Int
+  isAlive        Boolean  @default(true)
+  isConnected    Boolean  @default(true)
+  reinforcements Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  ownedTerritories GameTerritoryState[] @relation("OwnedTerritories")
+  actionLogs       GameActionLog[]      @relation("ActorLogs")
+
+  @@unique([gameId, seat])
+  @@index([gameId, userId])
+}
+
+model Territory {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  name      String
+  svgId     String   @unique
+  adjacency Json
+  continent String?
+  createdAt DateTime @default(now())
+
+  gameStates GameTerritoryState[]
+}
+
+model MapDefinition {
+  id         String   @id @default(cuid())
+  key        String   @unique
+  name       String
+  version    Int
+  svgViewBox String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  territories MapTerritory[]
+  games       Game[]
+}
+
+model MapTerritory {
+  id        String   @id @default(cuid())
+  mapId     String
+  key       String
+  name      String
+  svgId     String
+  pathData  String
+  adjacency Json
+  continent String?
+  centroidX Float
+  centroidY Float
+  createdAt DateTime @default(now())
+
+  map          MapDefinition        @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  gameStates   GameTerritoryState[]
+
+  @@unique([mapId, key])
+  @@unique([mapId, svgId])
+}
+
+model GameTerritoryState {
+  id            String @id @default(cuid())
+  gameId        String
+  territoryId   String?
+  mapTerritoryId String?
+  ownerPlayerId String
+  troops        Int    @default(1)
+
+  game      Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  territory Territory? @relation(fields: [territoryId], references: [id], onDelete: Restrict)
+  mapTerritory MapTerritory? @relation(fields: [mapTerritoryId], references: [id], onDelete: Restrict)
+  owner     GamePlayer @relation("OwnedTerritories", fields: [ownerPlayerId], references: [id], onDelete: Cascade)
+
+  @@unique([gameId, territoryId])
+  @@unique([gameId, mapTerritoryId])
+  @@index([gameId, ownerPlayerId])
+}
+
+model GameActionLog {
+  id            String   @id @default(cuid())
+  gameId        String
+  turn          Int
+  actorPlayerId String?
+  type          String
+  payload       Json
+  createdAt     DateTime @default(now())
+
+  game  Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  actor GamePlayer? @relation("ActorLogs", fields: [actorPlayerId], references: [id], onDelete: SetNull)
+
+  @@index([gameId, createdAt])
+}
+
+enum GameStatus {
+  waiting
+  in_progress
+  finished
 }

@@ -3,10 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "cross-env NODE_ENV=development node server.mjs",
     "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "start": "cross-env NODE_ENV=production node server.mjs",
+    "lint": "eslint",
+    "map:fix-ids:world": "node scripts/fix-map-ids.mjs world-simplified",
+    "map:merge-paths:world": "node scripts/merge-map-paths-by-id.mjs world-simplified",
+    "map:export:world": "node scripts/export-map-from-svg.mjs world-simplified",
+    "map:master:world": "node scripts/build-master-from-definition.mjs world-simplified"
   },
   "dependencies": {
     "@prisma/client": "^6.19.0",
@@ -18,6 +22,8 @@
     "next-intl": "^4.5.3",
     "react": "19.2.0",
     "react-dom": "19.2.0",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -26,6 +32,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^10.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.3",
     "prisma": "^6.19.0",

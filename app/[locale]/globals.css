@@ -1,1 +1,93 @@
-@import 'tailwindcss';
+﻿@import "tailwindcss";
+
+:root {
+  --bg: #eef2f7;
+  --panel: #ffffff;
+  --panel-muted: #f6f8fc;
+  --text: #0f172a;
+  --text-muted: #475569;
+  --border: #d6deea;
+  --player-me: #2f80ed;
+  --player-opponent: #f2994a;
+  --neutral: #cbd5e1;
+  --danger: #d64545;
+  --success: #1f9d67;
+  --amber: #b7791f;
+}
+
+body {
+  color: var(--text);
+  background:
+    radial-gradient(1200px 600px at 15% -20%, #dbeafe, transparent 60%),
+    radial-gradient(1200px 600px at 100% 10%, #fde68a55, transparent 50%),
+    var(--bg);
+}
+
+@layer components {
+  .panel {
+    @apply rounded-xl border shadow-sm;
+    border-color: var(--border);
+    background-color: var(--panel);
+  }
+
+  .panel-muted {
+    @apply rounded-xl border;
+    border-color: var(--border);
+    background-color: var(--panel-muted);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-white transition;
+    background-color: var(--player-me);
+  }
+
+  .btn-primary:hover {
+    filter: brightness(0.95);
+  }
+
+  .btn-primary:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-semibold transition;
+    border-color: var(--border);
+    background: #fff;
+    color: var(--text);
+  }
+
+  .btn-secondary:hover {
+    background-color: #f8fafc;
+  }
+
+  .btn-secondary:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  .btn-danger {
+    @apply inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-white transition;
+    background-color: var(--danger);
+  }
+
+  .btn-danger:hover {
+    filter: brightness(0.95);
+  }
+
+  .btn-danger:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium;
+    border-color: var(--border);
+    color: var(--text-muted);
+    background-color: #fff;
+  }
+
+  .stat-pill {
+    @apply inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold;
+    background: #e2e8f0;
+    color: #1e293b;
+  }
+}
+

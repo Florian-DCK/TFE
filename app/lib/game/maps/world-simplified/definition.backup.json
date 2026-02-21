@@ -1,0 +1,720 @@
+{
+  "mapKey": "world-simplified",
+  "name": "Monde simplifie",
+  "version": 1,
+  "viewBox": "0 0 1024 560",
+  "territories": [
+    {
+      "key": "alaska",
+      "name": "Alaska",
+      "continent": "north_america",
+      "svgId": "t-alaska",
+      "adjacency": [
+        "nw_territory",
+        "alberta",
+        "kamchatka"
+      ],
+      "centroid": {
+        "x": 52,
+        "y": 60
+      },
+      "pathData": "M 20 40 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "nw_territory",
+      "name": "Northwest Territory",
+      "continent": "north_america",
+      "svgId": "t-nw_territory",
+      "adjacency": [
+        "alaska",
+        "alberta",
+        "ontario",
+        "greenland"
+      ],
+      "centroid": {
+        "x": 172,
+        "y": 50
+      },
+      "pathData": "M 140 30 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "greenland",
+      "name": "Greenland",
+      "continent": "north_america",
+      "svgId": "t-greenland",
+      "adjacency": [
+        "nw_territory",
+        "ontario",
+        "quebec",
+        "iceland"
+      ],
+      "centroid": {
+        "x": 312,
+        "y": 40
+      },
+      "pathData": "M 280 20 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "alberta",
+      "name": "Alberta",
+      "continent": "north_america",
+      "svgId": "t-alberta",
+      "adjacency": [
+        "alaska",
+        "nw_territory",
+        "ontario",
+        "western_us"
+      ],
+      "centroid": {
+        "x": 122,
+        "y": 115
+      },
+      "pathData": "M 90 95 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "ontario",
+      "name": "Ontario",
+      "continent": "north_america",
+      "svgId": "t-ontario",
+      "adjacency": [
+        "nw_territory",
+        "greenland",
+        "quebec",
+        "eastern_us",
+        "western_us",
+        "alberta"
+      ],
+      "centroid": {
+        "x": 202,
+        "y": 115
+      },
+      "pathData": "M 170 95 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "quebec",
+      "name": "Quebec",
+      "continent": "north_america",
+      "svgId": "t-quebec",
+      "adjacency": [
+        "ontario",
+        "greenland",
+        "eastern_us"
+      ],
+      "centroid": {
+        "x": 277,
+        "y": 115
+      },
+      "pathData": "M 245 95 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "western_us",
+      "name": "Western US",
+      "continent": "north_america",
+      "svgId": "t-western_us",
+      "adjacency": [
+        "alberta",
+        "ontario",
+        "eastern_us",
+        "central_america"
+      ],
+      "centroid": {
+        "x": 142,
+        "y": 175
+      },
+      "pathData": "M 110 155 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "eastern_us",
+      "name": "Eastern US",
+      "continent": "north_america",
+      "svgId": "t-eastern_us",
+      "adjacency": [
+        "western_us",
+        "ontario",
+        "quebec",
+        "central_america"
+      ],
+      "centroid": {
+        "x": 232,
+        "y": 175
+      },
+      "pathData": "M 200 155 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "central_america",
+      "name": "Central America",
+      "continent": "north_america",
+      "svgId": "t-central_america",
+      "adjacency": [
+        "western_us",
+        "eastern_us",
+        "venezuela"
+      ],
+      "centroid": {
+        "x": 182,
+        "y": 235
+      },
+      "pathData": "M 150 215 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "venezuela",
+      "name": "Venezuela",
+      "continent": "south_america",
+      "svgId": "t-venezuela",
+      "adjacency": [
+        "central_america",
+        "peru",
+        "brazil"
+      ],
+      "centroid": {
+        "x": 222,
+        "y": 305
+      },
+      "pathData": "M 190 285 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "peru",
+      "name": "Peru",
+      "continent": "south_america",
+      "svgId": "t-peru",
+      "adjacency": [
+        "venezuela",
+        "brazil",
+        "argentina"
+      ],
+      "centroid": {
+        "x": 207,
+        "y": 365
+      },
+      "pathData": "M 175 345 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "brazil",
+      "name": "Brazil",
+      "continent": "south_america",
+      "svgId": "t-brazil",
+      "adjacency": [
+        "venezuela",
+        "peru",
+        "argentina",
+        "north_africa"
+      ],
+      "centroid": {
+        "x": 277,
+        "y": 355
+      },
+      "pathData": "M 245 335 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "argentina",
+      "name": "Argentina",
+      "continent": "south_america",
+      "svgId": "t-argentina",
+      "adjacency": [
+        "peru",
+        "brazil"
+      ],
+      "centroid": {
+        "x": 232,
+        "y": 425
+      },
+      "pathData": "M 200 405 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "iceland",
+      "name": "Iceland",
+      "continent": "europe",
+      "svgId": "t-iceland",
+      "adjacency": [
+        "greenland",
+        "scandinavia",
+        "great_britain"
+      ],
+      "centroid": {
+        "x": 452,
+        "y": 100
+      },
+      "pathData": "M 420 80 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "scandinavia",
+      "name": "Scandinavia",
+      "continent": "europe",
+      "svgId": "t-scandinavia",
+      "adjacency": [
+        "iceland",
+        "great_britain",
+        "northern_europe",
+        "ukraine"
+      ],
+      "centroid": {
+        "x": 532,
+        "y": 90
+      },
+      "pathData": "M 500 70 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "ukraine",
+      "name": "Ukraine",
+      "continent": "europe",
+      "svgId": "t-ukraine",
+      "adjacency": [
+        "scandinavia",
+        "northern_europe",
+        "southern_europe",
+        "afghanistan",
+        "ural",
+        "middle_east"
+      ],
+      "centroid": {
+        "x": 622,
+        "y": 130
+      },
+      "pathData": "M 590 110 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "great_britain",
+      "name": "Great Britain",
+      "continent": "europe",
+      "svgId": "t-great_britain",
+      "adjacency": [
+        "iceland",
+        "scandinavia",
+        "northern_europe",
+        "western_europe"
+      ],
+      "centroid": {
+        "x": 447,
+        "y": 165
+      },
+      "pathData": "M 415 145 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "northern_europe",
+      "name": "Northern Europe",
+      "continent": "europe",
+      "svgId": "t-northern_europe",
+      "adjacency": [
+        "great_britain",
+        "scandinavia",
+        "ukraine",
+        "southern_europe",
+        "western_europe"
+      ],
+      "centroid": {
+        "x": 532,
+        "y": 170
+      },
+      "pathData": "M 500 150 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "western_europe",
+      "name": "Western Europe",
+      "continent": "europe",
+      "svgId": "t-western_europe",
+      "adjacency": [
+        "great_britain",
+        "northern_europe",
+        "southern_europe",
+        "north_africa"
+      ],
+      "centroid": {
+        "x": 462,
+        "y": 230
+      },
+      "pathData": "M 430 210 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "southern_europe",
+      "name": "Southern Europe",
+      "continent": "europe",
+      "svgId": "t-southern_europe",
+      "adjacency": [
+        "western_europe",
+        "northern_europe",
+        "ukraine",
+        "egypt",
+        "middle_east",
+        "north_africa"
+      ],
+      "centroid": {
+        "x": 552,
+        "y": 230
+      },
+      "pathData": "M 520 210 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "north_africa",
+      "name": "North Africa",
+      "continent": "africa",
+      "svgId": "t-north_africa",
+      "adjacency": [
+        "brazil",
+        "western_europe",
+        "southern_europe",
+        "egypt",
+        "east_africa",
+        "congo"
+      ],
+      "centroid": {
+        "x": 482,
+        "y": 315
+      },
+      "pathData": "M 450 295 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "egypt",
+      "name": "Egypt",
+      "continent": "africa",
+      "svgId": "t-egypt",
+      "adjacency": [
+        "north_africa",
+        "southern_europe",
+        "middle_east",
+        "east_africa"
+      ],
+      "centroid": {
+        "x": 577,
+        "y": 315
+      },
+      "pathData": "M 545 295 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "east_africa",
+      "name": "East Africa",
+      "continent": "africa",
+      "svgId": "t-east_africa",
+      "adjacency": [
+        "egypt",
+        "north_africa",
+        "middle_east",
+        "congo",
+        "south_africa",
+        "madagascar"
+      ],
+      "centroid": {
+        "x": 602,
+        "y": 375
+      },
+      "pathData": "M 570 355 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "congo",
+      "name": "Congo",
+      "continent": "africa",
+      "svgId": "t-congo",
+      "adjacency": [
+        "north_africa",
+        "east_africa",
+        "south_africa"
+      ],
+      "centroid": {
+        "x": 527,
+        "y": 410
+      },
+      "pathData": "M 495 390 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "south_africa",
+      "name": "South Africa",
+      "continent": "africa",
+      "svgId": "t-south_africa",
+      "adjacency": [
+        "congo",
+        "east_africa",
+        "madagascar"
+      ],
+      "centroid": {
+        "x": 562,
+        "y": 485
+      },
+      "pathData": "M 530 465 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "madagascar",
+      "name": "Madagascar",
+      "continent": "africa",
+      "svgId": "t-madagascar",
+      "adjacency": [
+        "east_africa",
+        "south_africa"
+      ],
+      "centroid": {
+        "x": 647,
+        "y": 475
+      },
+      "pathData": "M 615 455 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "ural",
+      "name": "Ural",
+      "continent": "asia",
+      "svgId": "t-ural",
+      "adjacency": [
+        "ukraine",
+        "siberia",
+        "china",
+        "afghanistan"
+      ],
+      "centroid": {
+        "x": 697,
+        "y": 125
+      },
+      "pathData": "M 665 105 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "siberia",
+      "name": "Siberia",
+      "continent": "asia",
+      "svgId": "t-siberia",
+      "adjacency": [
+        "ural",
+        "yakutsk",
+        "irkutsk",
+        "mongolia",
+        "china"
+      ],
+      "centroid": {
+        "x": 772,
+        "y": 95
+      },
+      "pathData": "M 740 75 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "yakutsk",
+      "name": "Yakutsk",
+      "continent": "asia",
+      "svgId": "t-yakutsk",
+      "adjacency": [
+        "siberia",
+        "irkutsk",
+        "kamchatka"
+      ],
+      "centroid": {
+        "x": 852,
+        "y": 65
+      },
+      "pathData": "M 820 45 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "kamchatka",
+      "name": "Kamchatka",
+      "continent": "asia",
+      "svgId": "t-kamchatka",
+      "adjacency": [
+        "yakutsk",
+        "irkutsk",
+        "mongolia",
+        "japan",
+        "alaska"
+      ],
+      "centroid": {
+        "x": 937,
+        "y": 105
+      },
+      "pathData": "M 905 85 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "irkutsk",
+      "name": "Irkutsk",
+      "continent": "asia",
+      "svgId": "t-irkutsk",
+      "adjacency": [
+        "siberia",
+        "yakutsk",
+        "kamchatka",
+        "mongolia"
+      ],
+      "centroid": {
+        "x": 817,
+        "y": 155
+      },
+      "pathData": "M 785 135 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "mongolia",
+      "name": "Mongolia",
+      "continent": "asia",
+      "svgId": "t-mongolia",
+      "adjacency": [
+        "siberia",
+        "irkutsk",
+        "kamchatka",
+        "japan",
+        "china"
+      ],
+      "centroid": {
+        "x": 892,
+        "y": 185
+      },
+      "pathData": "M 860 165 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "japan",
+      "name": "Japan",
+      "continent": "asia",
+      "svgId": "t-japan",
+      "adjacency": [
+        "kamchatka",
+        "mongolia"
+      ],
+      "centroid": {
+        "x": 972,
+        "y": 190
+      },
+      "pathData": "M 940 170 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "afghanistan",
+      "name": "Afghanistan",
+      "continent": "asia",
+      "svgId": "t-afghanistan",
+      "adjacency": [
+        "ukraine",
+        "ural",
+        "china",
+        "india",
+        "middle_east"
+      ],
+      "centroid": {
+        "x": 682,
+        "y": 195
+      },
+      "pathData": "M 650 175 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "middle_east",
+      "name": "Middle East",
+      "continent": "asia",
+      "svgId": "t-middle_east",
+      "adjacency": [
+        "ukraine",
+        "afghanistan",
+        "india",
+        "east_africa",
+        "egypt",
+        "southern_europe"
+      ],
+      "centroid": {
+        "x": 642,
+        "y": 265
+      },
+      "pathData": "M 610 245 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "india",
+      "name": "India",
+      "continent": "asia",
+      "svgId": "t-india",
+      "adjacency": [
+        "middle_east",
+        "afghanistan",
+        "china",
+        "siam"
+      ],
+      "centroid": {
+        "x": 732,
+        "y": 265
+      },
+      "pathData": "M 700 245 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "siam",
+      "name": "Siam",
+      "continent": "asia",
+      "svgId": "t-siam",
+      "adjacency": [
+        "india",
+        "china",
+        "indonesia"
+      ],
+      "centroid": {
+        "x": 807,
+        "y": 285
+      },
+      "pathData": "M 775 265 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "china",
+      "name": "China",
+      "continent": "asia",
+      "svgId": "t-china",
+      "adjacency": [
+        "ural",
+        "siberia",
+        "mongolia",
+        "afghanistan",
+        "india",
+        "siam"
+      ],
+      "centroid": {
+        "x": 792,
+        "y": 210
+      },
+      "pathData": "M 760 190 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "indonesia",
+      "name": "Indonesia",
+      "continent": "australia",
+      "svgId": "t-indonesia",
+      "adjacency": [
+        "siam",
+        "new_guinea",
+        "western_australia"
+      ],
+      "centroid": {
+        "x": 822,
+        "y": 385
+      },
+      "pathData": "M 790 365 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "new_guinea",
+      "name": "New Guinea",
+      "continent": "australia",
+      "svgId": "t-new_guinea",
+      "adjacency": [
+        "indonesia",
+        "western_australia",
+        "eastern_australia"
+      ],
+      "centroid": {
+        "x": 917,
+        "y": 380
+      },
+      "pathData": "M 885 360 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "western_australia",
+      "name": "Western Australia",
+      "continent": "australia",
+      "svgId": "t-western_australia",
+      "adjacency": [
+        "indonesia",
+        "new_guinea",
+        "eastern_australia"
+      ],
+      "centroid": {
+        "x": 852,
+        "y": 455
+      },
+      "pathData": "M 820 435 h 64 v 40 h -64 Z"
+    },
+    {
+      "key": "eastern_australia",
+      "name": "Eastern Australia",
+      "continent": "australia",
+      "svgId": "t-eastern_australia",
+      "adjacency": [
+        "western_australia",
+        "new_guinea"
+      ],
+      "centroid": {
+        "x": 932,
+        "y": 455
+      },
+      "pathData": "M 900 435 h 64 v 40 h -64 Z"
+    }
+  ]
+}

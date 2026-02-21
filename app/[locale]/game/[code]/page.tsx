@@ -12,12 +12,17 @@ function generateGuestPseudo() {
 
 export default async function GamePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; code: string }>;
+  searchParams: Promise<{ name?: string | string[] }>;
 }) {
   const { locale, code } = await params;
+  const search = await searchParams;
   const user = await getCurrentUser();
-  const displayName = user?.pseudo || generateGuestPseudo();
+  const requestedName = Array.isArray(search.name) ? search.name[0] : search.name;
+  const safeGuestName = requestedName?.trim().slice(0, 50);
+  const displayName = user?.pseudo || safeGuestName || generateGuestPseudo();
 
   return <GameClient locale={locale} code={code} displayName={displayName} />;
 }

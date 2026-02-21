@@ -1,4 +1,5 @@
-﻿import { ActionLogDTO, GameStateDTO } from "@/app/lib/game/protocol";
+﻿import { useEffect, useRef } from "react";
+import { ActionLogDTO, GameStateDTO } from "@/app/lib/game/protocol";
 
 function actorName(log: ActionLogDTO, gameState: GameStateDTO) {
   if (!log.actorPlayerId) return "Systeme";
@@ -26,19 +27,26 @@ function toText(log: ActionLogDTO) {
 }
 
 export default function BattleLog({ gameState }: { gameState: GameStateDTO }) {
+  const listRef = useRef<HTMLUListElement | null>(null);
   const recentIds = new Set(gameState.logs.slice(-3).map((log) => log.id));
+
+  useEffect(() => {
+    const el = listRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [gameState.logs.length]);
 
   return (
     <div>
-      <h3 className="mb-2 text-sm font-semibold">Historique recent</h3>
-      <ul className="max-h-72 space-y-1 overflow-y-auto pr-1 text-xs sm:text-sm">
+      <h3 className="mb-2 text-sm font-extrabold text-slate-800">Historique recent</h3>
+      <ul ref={listRef} className="max-h-72 space-y-1 overflow-y-auto pr-1 text-xs sm:text-sm">
         {gameState.logs.map((log) => {
           const recent = recentIds.has(log.id);
           return (
             <li
               key={log.id}
               className={`rounded-md border px-2 py-1 ${
-                recent ? "border-blue-200 bg-blue-50" : "border-slate-200 bg-slate-50"
+                recent ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-white/85"
               }`}
             >
               <span className="font-semibold">T{log.turn}</span> · {actorName(log, gameState)} · {toText(log)}
@@ -49,4 +57,3 @@ export default function BattleLog({ gameState }: { gameState: GameStateDTO }) {
     </div>
   );
 }
-

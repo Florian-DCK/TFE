@@ -320,8 +320,15 @@ io.on("connection", (socket) => {
       if (actionResult?.log) {
         io.to(`game:${code}`).emit("action_log", actionResult.log);
       }
-
-      await emitGameState(code, { includeLogs: false });
+      if (actionResult?.patch) {
+        io.to(`game:${code}`).emit("action_applied", actionResult.patch);
+      }
+      if (actionResult?.finished) {
+        io.to(`game:${code}`).emit("game_finished", {
+          gameCode: code,
+          winnerPlayerId: actionResult.winnerPlayerId ?? null,
+        });
+      }
     } catch (error) {
       console.log(
         JSON.stringify({

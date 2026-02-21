@@ -46,40 +46,48 @@ export default function HomeLobbyGateway({
   };
 
   return (
-    <section style={{ border: "1px solid #ddd", borderRadius: 10, padding: 16 }}>
-      <h2>Jouer</h2>
-      <p>Pseudo actif: {effectivePseudo}</p>
+    <section className="panel border-orange-200/80 bg-white/90 p-5">
+      <h2 className="text-xl font-extrabold text-slate-800">Lancer une partie</h2>
+      <p className="mt-1 text-sm text-slate-600">
+        Pseudo actif: <span className="font-semibold text-slate-800">{effectivePseudo}</span>
+      </p>
 
       {!authenticatedPseudo && (
-        <div style={{ marginBottom: 12 }}>
-          <label htmlFor="guest-pseudo">Pseudo invite</label>
+        <div className="mt-4">
+          <label htmlFor="guest-pseudo" className="text-sm font-semibold text-slate-700">
+            Pseudo invite
+          </label>
           <input
             id="guest-pseudo"
             value={guestPseudo}
             maxLength={50}
             onChange={(e) => setGuestPseudo(e.target.value)}
             placeholder="Guest-Player"
-            style={{ display: "block", marginTop: 6 }}
+            className="mt-1 w-full rounded-lg border border-orange-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none ring-orange-300 transition focus:ring-2"
           />
         </div>
       )}
 
-      <div style={{ marginBottom: 12 }}>
-        <label htmlFor="lobby-code">Code du salon</label>
+      <div className="mt-4">
+        <label htmlFor="lobby-code" className="text-sm font-semibold text-slate-700">
+          Code du salon
+        </label>
         <input
           id="lobby-code"
           value={codeInput}
           onChange={(e) => setCodeInput(normalizeCode(e.target.value))}
           placeholder="Ex: AB12CD"
-          style={{ display: "block", marginTop: 6, textTransform: "uppercase" }}
+          className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm uppercase tracking-wider text-slate-800 outline-none ring-emerald-300 transition focus:ring-2"
         />
       </div>
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button onClick={() => goToLobby()} disabled={!normalizeCode(codeInput)}>
+      <div className="mt-5 flex flex-wrap gap-2">
+        <button className="btn-primary bg-emerald-500 hover:bg-emerald-600" onClick={() => goToLobby()} disabled={!normalizeCode(codeInput)}>
           Rejoindre un salon
         </button>
-        <button onClick={createLobby}>Creer un nouveau salon</button>
+        <button className="btn-secondary border-orange-200 bg-orange-50 text-orange-700 hover:bg-orange-100" onClick={createLobby}>
+          Creer un nouveau salon
+        </button>
       </div>
     </section>
   );

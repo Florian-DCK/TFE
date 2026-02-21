@@ -19,7 +19,6 @@ export default function LobbyClient({
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [gameCode, setGameCode] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
   const [maps, setMaps] = useState<MapOption[]>([]);
   const [selectedMapKey, setSelectedMapKey] = useState("world-simplified");
   const startDeadlineRef = useRef<number | null>(null);
@@ -44,7 +43,9 @@ export default function LobbyClient({
       if (startDeadlineRef.current) window.clearTimeout(startDeadlineRef.current);
       startDeadlineRef.current = null;
       setIsStarting(false);
-      router.push(`/game/${payload.gameCode}`);
+      const params = new URLSearchParams();
+      params.set("name", displayName);
+      router.push(`/game/${payload.gameCode}?${params.toString()}`);
     };
 
     const onLobbyLocked = (payload: { lobbyCode: string; gameCode: string }) => {
@@ -58,36 +59,24 @@ export default function LobbyClient({
       setError(payload.reason);
       setIsStarting(false);
     };
-    const onServerInfo = (payload: { rev?: string }) => {
-      setStatus(`Serveur: ${payload.rev ?? "unknown"}`);
-    };
     const onMapsList = (payload: { maps?: MapOption[] }) => {
       const list = payload.maps ?? [];
       setMaps(list);
       setSelectedMapKey((prev) => (list.length > 0 && !list.some((m) => m.key === prev) ? list[0].key : prev));
     };
-    const onConnect = () => setStatus(`Socket connecte: ${s.id}`);
-    const onDisconnect = () => setStatus("Socket deconnecte");
 
     s.on("lobby_state", onLobbyState);
     s.on("game_started", onGameStarted);
     s.on("lobby_locked", onLobbyLocked);
     s.on("action_rejected", onRejected);
-    s.on("server_info", onServerInfo);
     s.on("maps_list", onMapsList);
-    s.on("connect", onConnect);
-    s.on("disconnect", onDisconnect);
-    if (s.connected) onConnect();
 
     return () => {
       s.off("lobby_state", onLobbyState);
       s.off("game_started", onGameStarted);
       s.off("lobby_locked", onLobbyLocked);
       s.off("action_rejected", onRejected);
-      s.off("server_info", onServerInfo);
       s.off("maps_list", onMapsList);
-      s.off("connect", onConnect);
-      s.off("disconnect", onDisconnect);
       s.emit("leave_lobby", { lobbyCode: code });
     };
   }, [code, displayName, router]);
@@ -97,7 +86,6 @@ export default function LobbyClient({
   const startGame = () => {
     setError(null);
     setIsStarting(true);
-    setStatus("Envoi de start_game...");
     const s = getSocket();
     if (!s.connected) {
       setIsStarting(false);
@@ -125,62 +113,99 @@ export default function LobbyClient({
 
         if (!response?.ok || !response.gameCode) {
           setIsStarting(false);
-          setStatus("Reponse serveur: refus");
           setError(response?.reason || "Impossible de lancer la partie.");
           return;
         }
 
-        setStatus("Reponse serveur: ok, redirection...");
-        router.push(`/game/${response.gameCode}`);
+        const params = new URLSearchParams();
+        params.set("name", displayName);
+        router.push(`/game/${response.gameCode}?${params.toString()}`);
       },
     );
   };
 
   return (
-    <div style={{ padding: 16 }}>
-      <div>
-        Lobby {code}
-      </div>
+    <main className="relative min-h-screen overflow-hidden px-4 py-8">
+      <div className="pointer-events-none absolute -left-20 top-8 h-56 w-56 rounded-full bg-amber-300/35 blur-3xl" />
+      <div className="pointer-events-none absolute right-2 top-16 h-64 w-64 rounded-full bg-emerald-300/35 blur-3xl" />
 
-      <h3 style={{ marginTop: 16 }}>Joueurs connectes ({members.length})</h3>
-      <ul>
-        {members.map((m) => (
-          <li key={m.id}>
-            {m.name}
-            {m.isHost ? " (host)" : ""}
-          </li>
-        ))}
-      </ul>
+      <section className="relative mx-auto grid max-w-5xl gap-4 lg:grid-cols-5">
+        <div className="panel border-sky-200/80 bg-gradient-to-br from-sky-50 to-cyan-50 p-5 lg:col-span-2">
+          <p className="chip border-sky-200 bg-sky-100 text-sky-800">Salon en attente</p>
+          <h1 className="mt-3 text-3xl font-black text-slate-900">Lobby {code}</h1>
+          <p className="mt-2 text-sm text-slate-700">
+            Connecte comme <span className="font-semibold text-slate-900">{displayName}</span>.
+          </p>
 
-      <button onClick={startGame} disabled={!canStart || isStarting}>
-        {isStarting ? "Lancement..." : "Lancer la partie"}
-      </button>
-      <div style={{ marginTop: 8 }}>
-        <label htmlFor="map-key">Carte:</label>{" "}
-        <select
-          id="map-key"
-          value={selectedMapKey}
-          onChange={(e) => setSelectedMapKey(e.target.value)}
-          disabled={isStarting}
-        >
-          {(maps.length > 0 ? maps : [{ key: "world-simplified", name: "Monde simplifie", version: 1, territories: 42 }]).map((map) => (
-            <option key={map.key} value={map.key}>
-              {map.name} (v{map.version}, {map.territories} territoires)
-            </option>
-          ))}
-        </select>
-      </div>
+          <div className="mt-5">
+            <label htmlFor="map-key" className="text-sm font-semibold text-slate-700">
+              Carte
+            </label>
+            <select
+              id="map-key"
+              value={selectedMapKey}
+              onChange={(e) => setSelectedMapKey(e.target.value)}
+              disabled={isStarting}
+              className="mt-1 w-full rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none ring-emerald-300 transition focus:ring-2"
+            >
+              {(maps.length > 0
+                ? maps
+                : [{ key: "world-simplified", name: "Monde simplifie", version: 1, territories: 42 }]
+              ).map((map) => (
+                <option key={map.key} value={map.key}>
+                  {map.name} (v{map.version}, {map.territories} territoires)
+                </option>
+              ))}
+            </select>
+          </div>
 
-      {gameCode && <p>Partie en cours: {gameCode}</p>}
-      {status && <p style={{ color: "#555" }}>{status}</p>}
-      {error && <p style={{ color: "crimson" }}>{error}</p>}
-      {!error && !canStart && (
-        <p style={{ color: "#666" }}>
-          {members.length < 2
-            ? "Il faut au moins 2 joueurs pour lancer."
-            : "Partie deja lancee."}
-        </p>
-      )}
-    </div>
+          <button
+            onClick={startGame}
+            disabled={!canStart || isStarting}
+            className="btn-primary mt-5 w-full bg-emerald-500 hover:bg-emerald-600"
+          >
+            {isStarting ? "Lancement..." : "Lancer la partie"}
+          </button>
+
+          {!error && !canStart && (
+            <p className="mt-3 text-sm text-slate-600">
+              {members.length < 2 ? "Il faut au moins 2 joueurs pour lancer." : "Partie deja lancee."}
+            </p>
+          )}
+
+          {error && <p className="mt-3 rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</p>}
+          {gameCode && (
+            <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+              Partie en cours: {gameCode}
+            </p>
+          )}
+        </div>
+
+        <div className="panel border-orange-200/80 bg-white/90 p-5 lg:col-span-3">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-extrabold text-slate-800">Joueurs connectes ({members.length})</h2>
+            <span className="chip border-orange-200 bg-orange-100 text-orange-800">2 joueurs requis</span>
+          </div>
+
+          <ul className="space-y-2">
+            {members.map((m) => (
+              <li key={m.id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                <span className="font-medium text-slate-800">{m.name}</span>
+                {m.isHost ? (
+                  <span className="rounded-md bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">Host</span>
+                ) : (
+                  <span className="rounded-md bg-slate-200 px-2 py-1 text-xs font-semibold text-slate-700">Joueur</span>
+                )}
+              </li>
+            ))}
+            {members.length === 0 && (
+              <li className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-6 text-center text-sm text-slate-500">
+                En attente de joueurs...
+              </li>
+            )}
+          </ul>
+        </div>
+      </section>
+    </main>
   );
 }

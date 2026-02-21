@@ -19,6 +19,7 @@ export const submitActionSchema = z.discriminatedUnion("type", [
     fromTerritoryKey: z.string().min(1),
     toTerritoryKey: z.string().min(1),
     attackDice: z.number().int().min(1).max(3),
+    moveTroopsOnCapture: z.number().int().min(1).optional(),
   }),
   z.object({
     type: z.literal("fortify"),
@@ -26,6 +27,7 @@ export const submitActionSchema = z.discriminatedUnion("type", [
     toTerritoryKey: z.string().min(1),
     troops: z.number().int().min(1),
   }),
+  z.object({ type: z.literal("end_attack_phase") }),
   z.object({ type: z.literal("end_turn") }),
 ]);
 
@@ -48,6 +50,26 @@ function toActionLogDTO(log) {
     payload: log.payload,
     createdAt: log.createdAt.toISOString(),
   };
+}
+
+function buildTerritoryCountMap(territories) {
+  const counts = new Map();
+  for (const territory of territories) {
+    counts.set(territory.ownerPlayerId, (counts.get(territory.ownerPlayerId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function resolveCurrentPhase(game, actionLogs, currentTurnPlayerId) {
+  const currentPlayer = game.players.find((p) => p.id === currentTurnPlayerId);
+  if (!currentPlayer) return "reinforce";
+  if (currentPlayer.reinforcements > 0) return "reinforce";
+
+  const currentTurnLogs = actionLogs.filter(
+    (log) => log.turn === game.turnNumber && log.actorPlayerId === currentTurnPlayerId,
+  );
+  const attackPhaseEnded = currentTurnLogs.some((log) => log.type === "end_attack_phase");
+  return attackPhaseEnded ? "fortify" : "attack";
 }
 
 export function getDefaultMapKey() {
@@ -247,12 +269,11 @@ export async function getGameStateDTOWithOptions(
           territory: true,
         },
       },
-      ...(includeLogs
-        ? { actionLogs: { orderBy: { createdAt: "asc" }, take: logsLimit } }
-        : {}),
+      actionLogs: { orderBy: { createdAt: "asc" }, take: Math.max(logsLimit, 200) },
     },
   });
   if (!game || !game.map) return null;
+  const currentPhase = resolveCurrentPhase(game, game.actionLogs, game.currentTurnPlayerId);
 
   const territoryCounts = new Map();
   for (const t of game.territories) {
@@ -269,6 +290,7 @@ export async function getGameStateDTOWithOptions(
     },
     status: game.status,
     turnNumber: game.turnNumber,
+    currentPhase,
     currentTurnPlayerId: game.currentTurnPlayerId,
     winnerPlayerId: game.winnerPlayerId,
     players: game.players.map((p) => ({
@@ -304,7 +326,7 @@ export async function getGameStateDTOWithOptions(
         };
       })
       .filter(Boolean),
-    logs: includeLogs ? game.actionLogs.map(toActionLogDTO) : [],
+    logs: includeLogs ? game.actionLogs.slice(-logsLimit).map(toActionLogDTO) : [],
   };
 }
 
@@ -323,6 +345,7 @@ export async function applyAction(prisma, gameCode, playerId, action) {
       where: { code: gameCode },
       include: {
         players: { orderBy: { seat: "asc" } },
+        actionLogs: { orderBy: { createdAt: "asc" }, take: 300 },
         territories: {
           include: {
             mapTerritory: true,
@@ -339,6 +362,7 @@ export async function applyAction(prisma, gameCode, playerId, action) {
     if (game.currentTurnPlayerId !== playerId && actionInput.type !== "ready") {
       throw new Error("It is not your turn.");
     }
+    const currentPhase = resolveCurrentPhase(game, game.actionLogs, game.currentTurnPlayerId);
 
     const territoryByKey = new Map();
     const adjacencyByKey = new Map();
@@ -356,6 +380,7 @@ export async function applyAction(prisma, gameCode, playerId, action) {
       });
       adjacencyByKey.set(territoryKey, new Set(toAdjacencyArray(mt?.adjacency ?? lt?.adjacency ?? [])));
     }
+    const territoryCountsBefore = buildTerritoryCountMap(game.territories);
 
     const writeLog = async (type, payload) => {
       return tx.gameActionLog.create({
@@ -371,10 +396,15 @@ export async function applyAction(prisma, gameCode, playerId, action) {
 
     if (actionInput.type === "ready") {
       const log = await writeLog("ready", {});
-      return { type: "ok", log: toActionLogDTO(log) };
+      return {
+        type: "ok",
+        log: toActionLogDTO(log),
+        patch: { gameCode },
+      };
     }
 
     if (actionInput.type === "place_reinforcement") {
+      if (currentPhase !== "reinforce") throw new Error("Not reinforcement phase.");
       if (actingPlayer.reinforcements <= 0) throw new Error("No reinforcements left.");
       const target = territoryByKey.get(actionInput.territoryKey);
       if (!target || target.ownerPlayerId !== actingPlayer.id) {
@@ -392,10 +422,20 @@ export async function applyAction(prisma, gameCode, playerId, action) {
         territoryKey: actionInput.territoryKey,
         troops: 1,
       });
-      return { type: "ok", log: toActionLogDTO(log) };
+      return {
+        type: "ok",
+        log: toActionLogDTO(log),
+        patch: {
+          gameCode,
+          currentPhase: actingPlayer.reinforcements - 1 > 0 ? "reinforce" : "attack",
+          players: [{ id: actingPlayer.id, reinforcements: actingPlayer.reinforcements - 1 }],
+          territories: [{ territoryKey: actionInput.territoryKey, troops: target.troops + 1 }],
+        },
+      };
     }
 
     if (actionInput.type === "attack") {
+      if (currentPhase !== "attack") throw new Error("Not attack phase.");
       const from = territoryByKey.get(actionInput.fromTerritoryKey);
       const to = territoryByKey.get(actionInput.toTerritoryKey);
       const adjacencySet = adjacencyByKey.get(actionInput.fromTerritoryKey) ?? new Set();
@@ -414,16 +454,19 @@ export async function applyAction(prisma, gameCode, playerId, action) {
       });
 
       if (toAfter <= 0) {
+        const maxMove = Math.max(1, fromAfter - 1);
+        const requestedMove = actionInput.moveTroopsOnCapture ?? 1;
+        const movedTroops = Math.min(Math.max(1, requestedMove), maxMove);
         await tx.gameTerritoryState.update({
           where: { id: to.id },
           data: {
             ownerPlayerId: actingPlayer.id,
-            troops: 1,
+            troops: movedTroops,
           },
         });
         await tx.gameTerritoryState.update({
           where: { id: from.id },
-          data: { troops: fromAfter - 1 },
+          data: { troops: fromAfter - movedTroops },
         });
       } else {
         await tx.gameTerritoryState.update({
@@ -436,8 +479,43 @@ export async function applyAction(prisma, gameCode, playerId, action) {
         fromTerritoryKey: actionInput.fromTerritoryKey,
         toTerritoryKey: actionInput.toTerritoryKey,
         attackDice: actionInput.attackDice,
+        moveTroopsOnCapture: actionInput.moveTroopsOnCapture ?? 1,
         ...roll,
       });
+
+      const fromPatch = {
+        territoryKey: actionInput.fromTerritoryKey,
+        troops:
+          toAfter <= 0
+            ? fromAfter - Math.min(Math.max(1, actionInput.moveTroopsOnCapture ?? 1), Math.max(1, fromAfter - 1))
+            : fromAfter,
+      };
+      const toPatch =
+        toAfter <= 0
+          ? {
+              territoryKey: actionInput.toTerritoryKey,
+              ownerPlayerId: actingPlayer.id,
+              troops: Math.min(Math.max(1, actionInput.moveTroopsOnCapture ?? 1), Math.max(1, fromAfter - 1)),
+            }
+          : {
+              territoryKey: actionInput.toTerritoryKey,
+              troops: toAfter,
+            };
+
+      const playersPatch = [];
+      if (toAfter <= 0) {
+        const defenderTerritories = (territoryCountsBefore.get(to.ownerPlayerId) ?? 0) - 1;
+        const attackerTerritories = (territoryCountsBefore.get(actingPlayer.id) ?? 0) + 1;
+        playersPatch.push({
+          id: actingPlayer.id,
+          territoryCount: attackerTerritories,
+        });
+        playersPatch.push({
+          id: to.ownerPlayerId,
+          territoryCount: defenderTerritories,
+          isAlive: defenderTerritories > 0,
+        });
+      }
 
       const refreshed = await tx.gameTerritoryState.findMany({ where: { gameId: game.id } });
       const winnerPlayerId = checkVictory(game.players, refreshed);
@@ -453,10 +531,26 @@ export async function applyAction(prisma, gameCode, playerId, action) {
         finished: Boolean(winnerPlayerId),
         winnerPlayerId,
         log: toActionLogDTO(log),
+        patch: {
+          gameCode,
+          currentPhase: winnerPlayerId ? undefined : "attack",
+          status: winnerPlayerId ? "finished" : undefined,
+          winnerPlayerId: winnerPlayerId ?? undefined,
+          players: playersPatch.length > 0 ? playersPatch : undefined,
+          territories: [fromPatch, toPatch],
+        },
       };
     }
 
     if (actionInput.type === "fortify") {
+      if (currentPhase !== "fortify") throw new Error("Not fortify phase.");
+      if (
+        game.actionLogs.some(
+          (log) => log.turn === game.turnNumber && log.actorPlayerId === actingPlayer.id && log.type === "fortify",
+        )
+      ) {
+        throw new Error("Fortify is allowed only once per turn.");
+      }
       const from = territoryByKey.get(actionInput.fromTerritoryKey);
       const to = territoryByKey.get(actionInput.toTerritoryKey);
       const adjacencySet = adjacencyByKey.get(actionInput.fromTerritoryKey) ?? new Set();
@@ -472,10 +566,73 @@ export async function applyAction(prisma, gameCode, playerId, action) {
         data: { troops: { increment: actionInput.troops } },
       });
       const log = await writeLog("fortify", actionInput);
-      return { type: "ok", log: toActionLogDTO(log) };
+      const upcoming = nextPlayer(game.players, game.currentTurnPlayerId);
+      if (!upcoming) throw new Error("No available player for next turn.");
+      await tx.game.update({
+        where: { id: game.id },
+        data: {
+          currentTurnPlayerId: upcoming.id,
+          turnNumber: { increment: 1 },
+        },
+      });
+      await tx.gamePlayer.update({
+        where: { id: upcoming.id },
+        data: { reinforcements: computeReinforcements() },
+      });
+      await tx.gameActionLog.create({
+        data: {
+          gameId: game.id,
+          turn: game.turnNumber,
+          actorPlayerId: actingPlayer.id,
+          type: "end_turn",
+          payload: { nextPlayerId: upcoming.id, autoAfterFortify: true },
+        },
+      });
+      return {
+        type: "ok",
+        log: toActionLogDTO(log),
+        patch: {
+          gameCode,
+          turnNumber: game.turnNumber + 1,
+          currentTurnPlayerId: upcoming.id,
+          currentPhase: "reinforce",
+          players: [
+            {
+              id: upcoming.id,
+              reinforcements: computeReinforcements(),
+            },
+          ],
+          territories: [
+            { territoryKey: actionInput.fromTerritoryKey, troops: from.troops - actionInput.troops },
+            { territoryKey: actionInput.toTerritoryKey, troops: to.troops + actionInput.troops },
+          ],
+        },
+      };
+    }
+
+    if (actionInput.type === "end_attack_phase") {
+      if (currentPhase !== "attack") throw new Error("Not attack phase.");
+      if (
+        game.actionLogs.some(
+          (log) =>
+            log.turn === game.turnNumber && log.actorPlayerId === actingPlayer.id && log.type === "end_attack_phase",
+        )
+      ) {
+        throw new Error("Attack phase already ended.");
+      }
+      const log = await writeLog("end_attack_phase", {});
+      return {
+        type: "ok",
+        log: toActionLogDTO(log),
+        patch: {
+          gameCode,
+          currentPhase: "fortify",
+        },
+      };
     }
 
     if (actionInput.type === "end_turn") {
+      if (currentPhase !== "fortify") throw new Error("End turn is only allowed in fortify phase.");
       const upcoming = nextPlayer(game.players, game.currentTurnPlayerId);
       if (!upcoming) throw new Error("No available player for next turn.");
       await tx.game.update({
@@ -490,7 +647,18 @@ export async function applyAction(prisma, gameCode, playerId, action) {
         data: { reinforcements: computeReinforcements() },
       });
       const log = await writeLog("end_turn", { nextPlayerId: upcoming.id });
-      return { type: "ok", nextPlayerId: upcoming.id, log: toActionLogDTO(log) };
+      return {
+        type: "ok",
+        nextPlayerId: upcoming.id,
+        log: toActionLogDTO(log),
+        patch: {
+          gameCode,
+          turnNumber: game.turnNumber + 1,
+          currentTurnPlayerId: upcoming.id,
+          currentPhase: "reinforce",
+          players: [{ id: upcoming.id, reinforcements: computeReinforcements() }],
+        },
+      };
     }
 
     throw new Error("Unsupported action.");

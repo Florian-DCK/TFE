@@ -1,7 +1,5 @@
 ﻿import { GameStateDTO } from "@/app/lib/game/protocol";
-import { ActionMode } from "./ActionPanel";
-
-function objectiveFor(mode: ActionMode, isMyTurn: boolean, reinforcements: number) {
+function objectiveFor(mode: "reinforce" | "attack" | "fortify", isMyTurn: boolean, reinforcements: number) {
   if (!isMyTurn) return "Observe les mouvements adverses et prepare ta source.";
   if (reinforcements > 0) return "Placer tes renforts.";
   if (mode === "attack") return "Choisir une attaque valide.";
@@ -18,7 +16,7 @@ export default function TurnBanner({
 }: {
   gameState: GameStateDTO;
   myPlayerId: string | null;
-  mode: ActionMode;
+  mode: "reinforce" | "attack" | "fortify";
   displayName: string;
   uiHint: string | null;
 }) {
@@ -28,9 +26,9 @@ export default function TurnBanner({
   const objective = objectiveFor(mode, isMyTurn, me?.reinforcements ?? 0);
 
   return (
-    <div className="panel p-3">
+    <div className="panel border-amber-200/80 bg-white/90 p-3 shadow-lg backdrop-blur">
       <div className="grid gap-3 lg:grid-cols-3">
-        <div className="panel-muted p-2">
+        <div className="panel-muted border-sky-200 bg-sky-50 p-2">
           <p className="text-xs text-slate-500">Tu joues en</p>
           <div className="mt-1 flex items-center gap-2">
             <span
@@ -44,7 +42,7 @@ export default function TurnBanner({
           <p className="mt-1 text-xs text-slate-600">Renforts: {me?.reinforcements ?? 0}</p>
         </div>
 
-        <div className="panel-muted p-2">
+        <div className="panel-muted border-emerald-200 bg-emerald-50 p-2">
           <p className="text-xs text-slate-500">Tour actuel</p>
           <p className="mt-1 text-sm font-semibold">Tour {gameState.turnNumber}</p>
           <p className={`text-sm font-medium ${isMyTurn ? "text-emerald-700" : "text-amber-700"}`}>
@@ -57,7 +55,7 @@ export default function TurnBanner({
           )}
         </div>
 
-        <div className="panel-muted p-2">
+        <div className="panel-muted border-amber-200 bg-amber-50 p-2">
           <p className="text-xs text-slate-500">Objectif immediat</p>
           <p className="mt-1 text-sm font-medium">{objective}</p>
           {uiHint && <p className="mt-1 text-xs text-slate-600">{uiHint}</p>}
@@ -68,7 +66,7 @@ export default function TurnBanner({
         {gameState.players.map((player) => {
           const isMe = player.id === myPlayerId;
           return (
-            <span key={player.id} className="chip">
+            <span key={player.id} className="chip border-slate-200 bg-white/90">
               <span
                 className="inline-block h-2.5 w-2.5 rounded-full"
                 style={{ backgroundColor: isMe ? "var(--player-me)" : "var(--player-opponent)" }}

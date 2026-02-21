@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import type { WheelEventHandler } from "react";
+import { useMemo, useRef, useState } from "react";
 import { GameStateDTO, TerritoryStateDTO } from "@/app/lib/game/protocol";
-import { ActionMode } from "./ActionPanel";
 
 type Edge = {
   id: string;
@@ -59,20 +59,24 @@ export default function MapBoard({
   setHoveredTerritoryKey,
   adjacencyHintStyle,
   onPick,
-  onClearSelection,
+  onDeselect,
 }: {
   gameState: GameStateDTO;
   myPlayerId: string | null;
-  mode: ActionMode;
+  mode: "reinforce" | "attack" | "fortify";
   selectedFrom: string | null;
   selectedTo: string | null;
   hoveredTerritoryKey: string | null;
   setHoveredTerritoryKey: (territoryKey: string | null) => void;
   adjacencyHintStyle: "halo-lines";
   onPick: (territoryKey: string) => void;
-  onClearSelection: () => void;
+  onDeselect: () => void;
 }) {
   const [showConnections, setShowConnections] = useState(true);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const dragStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
 
   const territoryByKey = useMemo(
     () => new Map<string, TerritoryStateDTO>(gameState.territories.map((t) => [t.territoryKey, t])),
@@ -112,27 +116,72 @@ export default function MapBoard({
       .filter(Boolean);
   }, [focusKey, territoryByKey]);
 
+  const startDrag = (clientX: number, clientY: number) => {
+    dragStartRef.current = { x: clientX, y: clientY, panX: pan.x, panY: pan.y };
+    setDragging(true);
+  };
+
+  const updateDrag = (clientX: number, clientY: number) => {
+    if (!dragStartRef.current) return;
+    const dx = clientX - dragStartRef.current.x;
+    const dy = clientY - dragStartRef.current.y;
+    setPan({ x: dragStartRef.current.panX + dx, y: dragStartRef.current.panY + dy });
+  };
+
+  const endDrag = () => {
+    dragStartRef.current = null;
+    setDragging(false);
+  };
+
+  const handleWheel: WheelEventHandler<HTMLDivElement> = (event) => {
+    event.preventDefault();
+    const direction = event.deltaY > 0 ? -1 : 1;
+    const next = Math.max(0.7, Math.min(3.2, zoom + direction * 0.12));
+    setZoom(Number(next.toFixed(2)));
+  };
+
   return (
-    <div className="panel overflow-hidden p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div>
-          <h3 className="text-base font-semibold">Carte tactique - {gameState.map.name}</h3>
-          <p className="text-xs text-slate-500">Clique un territoire pour definir source/cible.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="btn-secondary text-xs" onClick={() => setShowConnections((v) => !v)}>
-            {showConnections ? "Masquer connexions" : "Afficher connexions"}
-          </button>
-          <button className="btn-secondary text-xs" onClick={onClearSelection}>
-            Reinitialiser
-          </button>
-        </div>
+    <div
+      className="relative h-full w-full overflow-hidden bg-gradient-to-br from-sky-100 via-cyan-50 to-emerald-100"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onDeselect();
+      }}
+      onWheel={handleWheel}
+      onPointerDown={(e) => {
+        if ((e.target as HTMLElement).closest("[data-territory='1']")) return;
+        startDrag(e.clientX, e.clientY);
+      }}
+      onPointerMove={(e) => updateDrag(e.clientX, e.clientY)}
+      onPointerUp={endDrag}
+      onPointerLeave={endDrag}
+      style={{ cursor: dragging ? "grabbing" : "grab" }}
+    >
+      <div className="pointer-events-auto absolute right-3 top-3 z-20 flex items-center gap-2 rounded-lg border border-sky-200/80 bg-white/90 p-2 shadow backdrop-blur">
+        <button className="btn-secondary px-2 py-1 text-xs" onClick={() => setZoom((z) => Math.max(0.7, z - 0.2))}>
+          -
+        </button>
+        <span className="text-xs text-slate-700">{Math.round(zoom * 100)}%</span>
+        <button className="btn-secondary px-2 py-1 text-xs" onClick={() => setZoom((z) => Math.min(3.2, z + 0.2))}>
+          +
+        </button>
+        <button className="btn-secondary px-2 py-1 text-xs" onClick={() => setPan({ x: 0, y: 0 })}>
+          Center
+        </button>
+        <button className="btn-secondary px-2 py-1 text-xs" onClick={() => setShowConnections((v) => !v)}>
+          {showConnections ? "Liens off" : "Liens on"}
+        </button>
       </div>
 
       <svg
         viewBox={gameState.map.viewBox}
-        className="w-full max-w-[980px] rounded-lg bg-slate-50"
+        className="h-full w-full bg-slate-50/60"
         aria-label="Carte de jeu"
+        style={{
+          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
+          transformOrigin: "50% 50%",
+          transition: dragging ? "none" : "transform 120ms ease-out",
+        }}
       >
         <image href={`/maps/${gameState.map.key}/board.svg`} x="0" y="0" width="100%" height="100%" opacity={0.2} />
 
@@ -181,6 +230,7 @@ export default function MapBoard({
             <g
               key={territory.territoryKey}
               className="cursor-pointer"
+              data-territory="1"
               onMouseEnter={() => setHoveredTerritoryKey(territory.territoryKey)}
               onMouseLeave={() => setHoveredTerritoryKey(null)}
               onClick={() => onPick(territory.territoryKey)}

@@ -8,7 +8,7 @@
   --text-muted: #475569;
   --border: #d6deea;
   --player-me: #2f80ed;
-  --player-opponent: #f2994a;
+  --player-opponent: #ef4444;
   --neutral: #cbd5e1;
   --danger: #d64545;
   --success: #1f9d67;
@@ -21,6 +21,29 @@ body {
     radial-gradient(1200px 600px at 15% -20%, #dbeafe, transparent 60%),
     radial-gradient(1200px 600px at 100% 10%, #fde68a55, transparent 50%),
     var(--bg);
+}
+
+@keyframes troop-popup-float {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  12% {
+    opacity: 1;
+  }
+  65% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+}
+
+.troop-popup-text {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: troop-popup-float 1.1s ease-out forwards;
 }
 
 @layer components {

@@ -3,9 +3,20 @@
   "name": "Monde simplifie",
   "version": 1,
   "viewBox": "0 0 1024 560",
+  "backgroundPng": "bg.png",
   "continents": [
-    { "key": "north_america", "name": "Amerique du Nord", "bonus": 5, "color": "#f59e0b" },
-    { "key": "south_america", "name": "Amerique du Sud", "bonus": 2, "color": "#f97316" },
+    {
+      "key": "north_america",
+      "name": "Amerique du Nord",
+      "bonus": 5,
+      "color": "#f59e0b"
+    },
+    {
+      "key": "south_america",
+      "name": "Amerique du Sud",
+      "bonus": 2,
+      "color": "#f97316"
+    },
     { "key": "europe", "name": "Europe", "bonus": 5, "color": "#8b5cf6" },
     { "key": "africa", "name": "Afrique", "bonus": 3, "color": "#14b8a6" },
     { "key": "asia", "name": "Asie", "bonus": 7, "color": "#84cc16" },
@@ -17,11 +28,7 @@
       "name": "Alaska",
       "continent": "north_america",
       "svgId": "t-alaska",
-      "adjacency": [
-        "nw_territory",
-        "alberta",
-        "kamchatka"
-      ],
+      "adjacency": ["nw_territory", "alberta", "kamchatka"],
       "centroid": {
         "x": 126,
         "y": 64
@@ -33,12 +40,7 @@
       "name": "Northwest Territory",
       "continent": "north_america",
       "svgId": "t-nw_territory",
-      "adjacency": [
-        "alaska",
-        "alberta",
-        "ontario",
-        "greenland"
-      ],
+      "adjacency": ["alaska", "alberta", "ontario", "greenland"],
       "centroid": {
         "x": 221.5,
         "y": 45.75
@@ -50,12 +52,7 @@
       "name": "Greenland",
       "continent": "north_america",
       "svgId": "t-greenland",
-      "adjacency": [
-        "nw_territory",
-        "ontario",
-        "quebec",
-        "iceland"
-      ],
+      "adjacency": ["nw_territory", "ontario", "quebec", "iceland"],
       "centroid": {
         "x": 372,
         "y": 51.25
@@ -67,12 +64,7 @@
       "name": "Alberta",
       "continent": "north_america",
       "svgId": "t-alberta",
-      "adjacency": [
-        "alaska",
-        "nw_territory",
-        "ontario",
-        "western_us"
-      ],
+      "adjacency": ["alaska", "nw_territory", "ontario", "western_us"],
       "centroid": {
         "x": 196.5,
         "y": 124.75
@@ -103,11 +95,7 @@
       "name": "Quebec",
       "continent": "north_america",
       "svgId": "t-quebec",
-      "adjacency": [
-        "ontario",
-        "greenland",
-        "eastern_us"
-      ],
+      "adjacency": ["ontario", "greenland", "eastern_us"],
       "centroid": {
         "x": 352.25,
         "y": 142.5
@@ -119,12 +107,7 @@
       "name": "Western US",
       "continent": "north_america",
       "svgId": "t-western_us",
-      "adjacency": [
-        "alberta",
-        "ontario",
-        "eastern_us",
-        "central_america"
-      ],
+      "adjacency": ["alberta", "ontario", "eastern_us", "central_america"],
       "centroid": {
         "x": 195,
         "y": 203.5
@@ -136,12 +119,7 @@
       "name": "Eastern US",
       "continent": "north_america",
       "svgId": "t-eastern_us",
-      "adjacency": [
-        "western_us",
-        "ontario",
-        "quebec",
-        "central_america"
-      ],
+      "adjacency": ["western_us", "ontario", "quebec", "central_america"],
       "centroid": {
         "x": 283.75,
         "y": 212.25
@@ -153,11 +131,7 @@
       "name": "Central America",
       "continent": "north_america",
       "svgId": "t-central_america",
-      "adjacency": [
-        "western_us",
-        "eastern_us",
-        "venezuela"
-      ],
+      "adjacency": ["western_us", "eastern_us", "venezuela"],
       "centroid": {
         "x": 195,
         "y": 276.5
@@ -169,11 +143,7 @@
       "name": "Venezuela",
       "continent": "south_america",
       "svgId": "t-venezuela",
-      "adjacency": [
-        "central_america",
-        "peru",
-        "brazil"
-      ],
+      "adjacency": ["central_america", "peru", "brazil"],
       "centroid": {
         "x": 250,
         "y": 345
@@ -185,11 +155,7 @@
       "name": "Peru",
       "continent": "south_america",
       "svgId": "t-peru",
-      "adjacency": [
-        "venezuela",
-        "brazil",
-        "argentina"
-      ],
+      "adjacency": ["venezuela", "brazil", "argentina"],
       "centroid": {
         "x": 238.5,
         "y": 420.5
@@ -201,12 +167,7 @@
       "name": "Brazil",
       "continent": "south_america",
       "svgId": "t-brazil",
-      "adjacency": [
-        "venezuela",
-        "peru",
-        "argentina",
-        "north_africa"
-      ],
+      "adjacency": ["venezuela", "peru", "argentina", "north_africa"],
       "centroid": {
         "x": 294.25,
         "y": 432
@@ -218,10 +179,7 @@
       "name": "Argentina",
       "continent": "south_america",
       "svgId": "t-argentina",
-      "adjacency": [
-        "peru",
-        "brazil"
-      ],
+      "adjacency": ["peru", "brazil"],
       "centroid": {
         "x": 246.75,
         "y": 499.75
@@ -233,11 +191,7 @@
       "name": "Iceland",
       "continent": "europe",
       "svgId": "t-iceland",
-      "adjacency": [
-        "greenland",
-        "scandinavia",
-        "great_britain"
-      ],
+      "adjacency": ["greenland", "scandinavia", "great_britain"],
       "centroid": {
         "x": 484.5,
         "y": 73.75
@@ -249,12 +203,7 @@
       "name": "Scandinavia",
       "continent": "europe",
       "svgId": "t-scandinavia",
-      "adjacency": [
-        "iceland",
-        "great_britain",
-        "northern_europe",
-        "ukraine"
-      ],
+      "adjacency": ["iceland", "great_britain", "northern_europe", "ukraine"],
       "centroid": {
         "x": 530.75,
         "y": 108.25
@@ -411,11 +360,7 @@
       "name": "Congo",
       "continent": "africa",
       "svgId": "t-congo",
-      "adjacency": [
-        "north_africa",
-        "east_africa",
-        "south_africa"
-      ],
+      "adjacency": ["north_africa", "east_africa", "south_africa"],
       "centroid": {
         "x": 539,
         "y": 414.25
@@ -427,11 +372,7 @@
       "name": "South Africa",
       "continent": "africa",
       "svgId": "t-south_africa",
-      "adjacency": [
-        "congo",
-        "east_africa",
-        "madagascar"
-      ],
+      "adjacency": ["congo", "east_africa", "madagascar"],
       "centroid": {
         "x": 558,
         "y": 477.75
@@ -443,10 +384,7 @@
       "name": "Madagascar",
       "continent": "africa",
       "svgId": "t-madagascar",
-      "adjacency": [
-        "east_africa",
-        "south_africa"
-      ],
+      "adjacency": ["east_africa", "south_africa"],
       "centroid": {
         "x": 617.25,
         "y": 481
@@ -458,12 +396,7 @@
       "name": "Ural",
       "continent": "asia",
       "svgId": "t-ural",
-      "adjacency": [
-        "ukraine",
-        "siberia",
-        "china",
-        "afghanistan"
-      ],
+      "adjacency": ["ukraine", "siberia", "china", "afghanistan"],
       "centroid": {
         "x": 696.5,
         "y": 88.75
@@ -475,13 +408,7 @@
       "name": "Siberia",
       "continent": "asia",
       "svgId": "t-siberia",
-      "adjacency": [
-        "ural",
-        "yakutsk",
-        "irkutsk",
-        "mongolia",
-        "china"
-      ],
+      "adjacency": ["ural", "yakutsk", "irkutsk", "mongolia", "china"],
       "centroid": {
         "x": 754.25,
         "y": 82.5
@@ -493,11 +420,7 @@
       "name": "Yakutsk",
       "continent": "asia",
       "svgId": "t-yakutsk",
-      "adjacency": [
-        "siberia",
-        "irkutsk",
-        "kamchatka"
-      ],
+      "adjacency": ["siberia", "irkutsk", "kamchatka"],
       "centroid": {
         "x": 850.5,
         "y": 46.75
@@ -509,13 +432,7 @@
       "name": "Kamchatka",
       "continent": "asia",
       "svgId": "t-kamchatka",
-      "adjacency": [
-        "yakutsk",
-        "irkutsk",
-        "mongolia",
-        "japan",
-        "alaska"
-      ],
+      "adjacency": ["yakutsk", "irkutsk", "mongolia", "japan", "alaska"],
       "centroid": {
         "x": 886,
         "y": 86
@@ -527,12 +444,7 @@
       "name": "Irkutsk",
       "continent": "asia",
       "svgId": "t-irkutsk",
-      "adjacency": [
-        "siberia",
-        "yakutsk",
-        "kamchatka",
-        "mongolia"
-      ],
+      "adjacency": ["siberia", "yakutsk", "kamchatka", "mongolia"],
       "centroid": {
         "x": 806.75,
         "y": 94.5
@@ -544,13 +456,7 @@
       "name": "Mongolia",
       "continent": "asia",
       "svgId": "t-mongolia",
-      "adjacency": [
-        "siberia",
-        "irkutsk",
-        "kamchatka",
-        "japan",
-        "china"
-      ],
+      "adjacency": ["siberia", "irkutsk", "kamchatka", "japan", "china"],
       "centroid": {
         "x": 801,
         "y": 173.5
@@ -562,10 +468,7 @@
       "name": "Japan",
       "continent": "asia",
       "svgId": "t-japan",
-      "adjacency": [
-        "kamchatka",
-        "mongolia"
-      ],
+      "adjacency": ["kamchatka", "mongolia"],
       "centroid": {
         "x": 871.25,
         "y": 182
@@ -577,13 +480,7 @@
       "name": "Afghanistan",
       "continent": "asia",
       "svgId": "t-afghanistan",
-      "adjacency": [
-        "ukraine",
-        "ural",
-        "china",
-        "india",
-        "middle_east"
-      ],
+      "adjacency": ["ukraine", "ural", "china", "india", "middle_east"],
       "centroid": {
         "x": 673,
         "y": 197
@@ -614,12 +511,7 @@
       "name": "India",
       "continent": "asia",
       "svgId": "t-india",
-      "adjacency": [
-        "middle_east",
-        "afghanistan",
-        "china",
-        "siam"
-      ],
+      "adjacency": ["middle_east", "afghanistan", "china", "siam"],
       "centroid": {
         "x": 708.75,
         "y": 286.25
@@ -631,11 +523,7 @@
       "name": "Siam",
       "continent": "asia",
       "svgId": "t-siam",
-      "adjacency": [
-        "india",
-        "china",
-        "indonesia"
-      ],
+      "adjacency": ["india", "china", "indonesia"],
       "centroid": {
         "x": 776.5,
         "y": 288.5
@@ -666,11 +554,7 @@
       "name": "Indonesia",
       "continent": "australia",
       "svgId": "t-indonesia",
-      "adjacency": [
-        "siam",
-        "new_guinea",
-        "western_australia"
-      ],
+      "adjacency": ["siam", "new_guinea", "western_australia"],
       "centroid": {
         "x": 815,
         "y": 318.25
@@ -682,11 +566,7 @@
       "name": "New Guinea",
       "continent": "australia",
       "svgId": "t-new_guinea",
-      "adjacency": [
-        "indonesia",
-        "western_australia",
-        "eastern_australia"
-      ],
+      "adjacency": ["indonesia", "western_australia", "eastern_australia"],
       "centroid": {
         "x": 904.5,
         "y": 341.5
@@ -698,11 +578,7 @@
       "name": "Western Australia",
       "continent": "australia",
       "svgId": "t-western_australia",
-      "adjacency": [
-        "indonesia",
-        "new_guinea",
-        "eastern_australia"
-      ],
+      "adjacency": ["indonesia", "new_guinea", "eastern_australia"],
       "centroid": {
         "x": 849.5,
         "y": 415.25
@@ -714,10 +590,7 @@
       "name": "Eastern Australia",
       "continent": "australia",
       "svgId": "t-eastern_australia",
-      "adjacency": [
-        "western_australia",
-        "new_guinea"
-      ],
+      "adjacency": ["western_australia", "new_guinea"],
       "centroid": {
         "x": 901.25,
         "y": 403

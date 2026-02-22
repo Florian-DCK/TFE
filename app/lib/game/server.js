@@ -371,6 +371,7 @@ export async function getGameStateDTOWithOptions(
       key: game.map.key,
       name: game.map.name,
       viewBox: game.map.svgViewBox,
+      backgroundPng: mapDefinition.backgroundPng ?? null,
       continents: (mapDefinition.continents ?? []).map((continent) => ({
         key: continent.key,
         name: continent.name,
@@ -425,6 +426,15 @@ function nextPlayer(players, currentTurnPlayerId) {
   const idx = sorted.findIndex((p) => p.id === currentTurnPlayerId);
   if (idx < 0) return sorted[0] ?? null;
   return sorted[(idx + 1) % sorted.length] ?? null;
+}
+
+function computeNextRoundNumber(players, currentTurnPlayerId, upcomingPlayerId, currentTurnNumber) {
+  const alive = [...players].sort((a, b) => a.seat - b.seat).filter((p) => p.isAlive);
+  const currentIdx = alive.findIndex((p) => p.id === currentTurnPlayerId);
+  const upcomingIdx = alive.findIndex((p) => p.id === upcomingPlayerId);
+  if (currentIdx < 0 || upcomingIdx < 0) return currentTurnNumber;
+  const wrapped = upcomingIdx <= currentIdx;
+  return currentTurnNumber + (wrapped ? 1 : 0);
 }
 
 export async function applyAction(prisma, gameCode, playerId, action) {
@@ -671,11 +681,17 @@ export async function applyAction(prisma, gameCode, playerId, action) {
       const log = await writeLog("fortify", actionInput);
       const upcoming = nextPlayer(game.players, game.currentTurnPlayerId);
       if (!upcoming) throw new Error("No available player for next turn.");
+      const nextTurnNumber = computeNextRoundNumber(
+        game.players,
+        game.currentTurnPlayerId,
+        upcoming.id,
+        game.turnNumber,
+      );
       await tx.game.update({
         where: { id: game.id },
         data: {
           currentTurnPlayerId: upcoming.id,
-          turnNumber: { increment: 1 },
+          turnNumber: nextTurnNumber,
         },
       });
       const territoriesAfterFortify = await tx.gameTerritoryState.findMany({
@@ -708,7 +724,7 @@ export async function applyAction(prisma, gameCode, playerId, action) {
         log: toActionLogDTO(log),
         patch: {
           gameCode,
-          turnNumber: game.turnNumber + 1,
+          turnNumber: nextTurnNumber,
           currentTurnPlayerId: upcoming.id,
           currentPhase: "reinforce",
           players: [
@@ -750,11 +766,17 @@ export async function applyAction(prisma, gameCode, playerId, action) {
       if (currentPhase !== "fortify") throw new Error("End turn is only allowed in fortify phase.");
       const upcoming = nextPlayer(game.players, game.currentTurnPlayerId);
       if (!upcoming) throw new Error("No available player for next turn.");
+      const nextTurnNumber = computeNextRoundNumber(
+        game.players,
+        game.currentTurnPlayerId,
+        upcoming.id,
+        game.turnNumber,
+      );
       await tx.game.update({
         where: { id: game.id },
         data: {
           currentTurnPlayerId: upcoming.id,
-          turnNumber: { increment: 1 },
+          turnNumber: nextTurnNumber,
         },
       });
       const territoriesBeforeNextTurn = await tx.gameTerritoryState.findMany({
@@ -780,7 +802,7 @@ export async function applyAction(prisma, gameCode, playerId, action) {
         log: toActionLogDTO(log),
         patch: {
           gameCode,
-          turnNumber: game.turnNumber + 1,
+          turnNumber: nextTurnNumber,
           currentTurnPlayerId: upcoming.id,
           currentPhase: "reinforce",
           players: [{ id: upcoming.id, reinforcements: upcomingReinforcements }],

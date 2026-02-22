@@ -65,6 +65,7 @@ export type GameStateDTO = {
     key: string;
     name: string;
     viewBox: string;
+    backgroundPng?: string | null;
     continents: Array<{
       key: string;
       name: string;

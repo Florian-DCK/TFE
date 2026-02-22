@@ -14,10 +14,44 @@ type Edge = {
 
 type ViewMode = "normal" | "continents";
 
+function hexToRgb(hex: string) {
+  const normalized = hex.replace("#", "");
+  const full = normalized.length === 3 ? normalized.split("").map((c) => `${c}${c}`).join("") : normalized;
+  const int = Number.parseInt(full, 16);
+  return {
+    r: (int >> 16) & 255,
+    g: (int >> 8) & 255,
+    b: int & 255,
+  };
+}
+
+function rgbToHex(r: number, g: number, b: number) {
+  const toHex = (value: number) => Math.max(0, Math.min(255, Math.round(value))).toString(16).padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+function mixHex(a: string, b: string, ratio: number) {
+  const ar = hexToRgb(a);
+  const br = hexToRgb(b);
+  const t = Math.max(0, Math.min(1, ratio));
+  return rgbToHex(ar.r + (br.r - ar.r) * t, ar.g + (br.g - ar.g) * t, ar.b + (br.b - ar.b) * t);
+}
+
+function troopBadgeBaseColor(ownerPlayerId: string, myPlayerId: string | null) {
+  const territoryTint = ownerFillHexColor(ownerPlayerId, myPlayerId);
+  return mixHex(territoryTint, "#0f172a", 0.12);
+}
+
 function ownerColor(ownerPlayerId: string, myPlayerId: string | null) {
   if (!ownerPlayerId) return "var(--neutral)";
   if (myPlayerId && ownerPlayerId === myPlayerId) return "var(--player-me)";
   return "var(--player-opponent)";
+}
+
+function ownerFillHexColor(ownerPlayerId: string, myPlayerId: string | null) {
+  if (!ownerPlayerId) return "#cbd5e1";
+  if (myPlayerId && ownerPlayerId === myPlayerId) return "#2f80ed";
+  return "#ef4444";
 }
 
 function canonicalEdge(a: string, b: string) {
@@ -119,6 +153,7 @@ export default function MapBoard({
   troopPopups?: Array<{ id: string; territoryKey: string; amount: number; kind: "loss" | "gain" }>;
 }) {
   const [showConnections, setShowConnections] = useState(true);
+  const [hoveredEdgeId, setHoveredEdgeId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("normal");
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -260,7 +295,7 @@ export default function MapBoard({
 
   return (
     <div
-      className="relative h-full w-full overflow-hidden bg-gradient-to-br from-sky-100 via-cyan-50 to-emerald-100"
+      className="relative h-full w-full overflow-hidden"
       onContextMenu={(e) => {
         e.preventDefault();
         onDeselect();
@@ -299,7 +334,7 @@ export default function MapBoard({
 
       <svg
         viewBox={gameState.map.viewBox}
-        className="h-full w-full bg-slate-50/60"
+        className="h-full w-full"
         aria-label="Carte de jeu"
         style={{
           transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
@@ -311,9 +346,15 @@ export default function MapBoard({
           <marker id="opponent-arrow-head" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626" />
           </marker>
+          <filter id="territory-relief" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="-1.2" dy="1.2" stdDeviation="0.7" floodColor="#ffffff" floodOpacity="0.45" />
+            <feDropShadow dx="1.8" dy="-1.8" stdDeviation="1.1" floodColor="#0f172a" floodOpacity="0.32" />
+          </filter>
+          <filter id="territory-relief-active" x="-25%" y="-25%" width="150%" height="150%">
+            <feDropShadow dx="-1.5" dy="1.5" stdDeviation="0.9" floodColor="#ffffff" floodOpacity="0.52" />
+            <feDropShadow dx="2.2" dy="-2.2" stdDeviation="1.5" floodColor="#0f172a" floodOpacity="0.42" />
+          </filter>
         </defs>
-
-        <image href={`/maps/${gameState.map.key}/board.svg`} x="0" y="0" width="100%" height="100%" opacity={0.2} />
 
         {showConnections &&
           allEdges.map((edge) => (
@@ -323,9 +364,14 @@ export default function MapBoard({
               y1={edge.ay}
               x2={edge.bx}
               y2={edge.by}
-              stroke="#64748b"
-              strokeWidth={1}
-              strokeOpacity={0.12}
+              stroke={hoveredEdgeId === edge.id ? "#dc2626" : "#64748b"}
+              strokeWidth={hoveredEdgeId === edge.id ? 3 : 2}
+              strokeOpacity={1}
+              strokeDasharray="7 6"
+              strokeLinecap="round"
+              pointerEvents="stroke"
+              onMouseEnter={() => setHoveredEdgeId(edge.id)}
+              onMouseLeave={() => setHoveredEdgeId((prev) => (prev === edge.id ? null : prev))}
             />
           ))}
 
@@ -339,10 +385,11 @@ export default function MapBoard({
                 y1={line.ay}
                 x2={line.bx}
                 y2={line.by}
-                stroke="#64748b"
-                strokeWidth={2}
-                strokeOpacity={0.45}
-                strokeDasharray="7 5"
+                stroke="#dc2626"
+                strokeWidth={3}
+                strokeOpacity={1}
+                strokeDasharray="7 6"
+                strokeLinecap="round"
               />
             ) : null,
           )}
@@ -361,7 +408,9 @@ export default function MapBoard({
 
           const continent = territory.continent ? continentByKey.get(territory.continent) : null;
           const continentColor = continent?.color ?? "#94a3b8";
-          const fillColor = viewMode === "continents" ? continentColor : ownerColor(territory.ownerPlayerId, myPlayerId);
+          const baseFillColor =
+            viewMode === "continents" ? continentColor : ownerFillHexColor(territory.ownerPlayerId, myPlayerId);
+          const fillColor = shouldDim ? mixHex(baseFillColor, "#0f172a", 0.32) : baseFillColor;
 
           return (
             <g
@@ -381,11 +430,12 @@ export default function MapBoard({
                 id={territory.svgId}
                 d={territory.pathData}
                 fill={fillColor}
-                stroke={isFrom ? "#0f172a" : isTo ? "#1d4ed8" : isActionableTarget ? "#1f9d67" : "#334155"}
-                strokeWidth={isFrom ? 3.5 : isTo ? 2.5 : isActionableTarget ? 3 : 1.25}
+                stroke={isFrom ? "#0f172a" : isTo ? "#1d4ed8" : isActionableTarget ? "#1f9d67" : isNeighbor ? "#f8fafc" : "#1f2937"}
+                strokeWidth={isFrom ? 3.5 : isTo ? 2.5 : isActionableTarget ? 3 : isNeighbor ? 2 : 1.25}
                 strokeDasharray={isTo ? "5 4" : ""}
-                opacity={shouldDim ? 0.28 : viewMode === "continents" ? 0.72 : 0.9}
+                opacity={1}
                 pointerEvents="all"
+                filter={isFrom || isTo || hovered ? "url(#territory-relief-active)" : "url(#territory-relief)"}
               />
 
               <path
@@ -396,26 +446,80 @@ export default function MapBoard({
                 pointerEvents="stroke"
               />
 
+              <path
+                d={territory.pathData}
+                fill="none"
+                stroke={isFrom || isTo || hovered || isNeighbor ? "#f8fafc" : "#334155"}
+                strokeWidth={isFrom || isTo || hovered || isNeighbor ? 1.5 : 1}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                pointerEvents="none"
+              />
+
               {(isNeighbor || isFocus) && (
                 <path
                   d={territory.pathData}
                   fill="none"
-                  stroke={isFocus ? "#0f172a" : "#64748b"}
+                  stroke={isFocus ? "#0f172a" : "#f8fafc"}
                   strokeWidth={2}
-                  opacity={0.6}
+                  opacity={1}
                 />
               )}
 
               {hovered && (
-                <text
-                  x={territory.centroid.x + 14}
-                  y={territory.centroid.y - 12}
-                  fontSize={10}
-                  fill="#0f172a"
-                  className="pointer-events-none"
-                >
-                  {territory.territoryName}
-                </text>
+                (() => {
+                  const labelX = territory.centroid.x + 16;
+                  const labelY = territory.centroid.y - 18 + liftY;
+                  const base = troopBadgeBaseColor(territory.ownerPlayerId, myPlayerId);
+                  const rim = mixHex(base, "#0f172a", 0.5);
+                  const core = mixHex(base, "#ffffff", 0.2);
+                  const textColor = mixHex(base, "#0f172a", 0.82);
+                  const labelWidth = Math.max(60, territory.territoryName.length * 6.5 + 18);
+                  const labelHeight = 18;
+
+                  return (
+                    <g className="pointer-events-none">
+                      <rect
+                        x={labelX - labelWidth / 2 + 1}
+                        y={labelY - labelHeight / 2 + 1.3}
+                        width={labelWidth}
+                        height={labelHeight}
+                        rx={9}
+                        fill="#0f172a"
+                        opacity={0.24}
+                      />
+                      <rect
+                        x={labelX - labelWidth / 2}
+                        y={labelY - labelHeight / 2}
+                        width={labelWidth}
+                        height={labelHeight}
+                        rx={9}
+                        fill={rim}
+                      />
+                      <rect
+                        x={labelX - labelWidth / 2 + 1.2}
+                        y={labelY - labelHeight / 2 + 1.2}
+                        width={labelWidth - 2.4}
+                        height={labelHeight - 2.4}
+                        rx={8}
+                        fill={core}
+                      />
+                      <text
+                        x={labelX}
+                        y={labelY}
+                        fontSize={10}
+                        fontWeight={800}
+                        fill={textColor}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        alignmentBaseline="middle"
+                        dy="0.02em"
+                      >
+                        {territory.territoryName}
+                      </text>
+                    </g>
+                  );
+                })()
               )}
             </g>
           );
@@ -423,16 +527,25 @@ export default function MapBoard({
 
         {gameState.territories.map((territory) => {
           const liftY = getLiftYForTerritory(territory.territoryKey, selectedFrom, selectedTo, hoveredTerritoryKey);
+          const base = troopBadgeBaseColor(territory.ownerPlayerId, myPlayerId);
+          const rim = mixHex(base, "#0f172a", 0.55);
+          const core = mixHex(base, "#ffffff", 0.12);
+          const specular = mixHex(base, "#ffffff", 0.58);
           return (
             <g key={`troops-${territory.territoryKey}`} pointerEvents="none">
-              <circle cx={territory.centroid.x} cy={territory.centroid.y + liftY} r={11} fill="#0f172a" opacity={0.86} />
+              <circle cx={territory.centroid.x + 1.2} cy={territory.centroid.y + liftY + 1.6} r={11.6} fill="#0f172a" opacity={0.32} />
+              <circle cx={territory.centroid.x} cy={territory.centroid.y + liftY} r={11.4} fill={rim} />
+              <circle cx={territory.centroid.x} cy={territory.centroid.y + liftY} r={9.8} fill={core} />
               <text
                 x={territory.centroid.x}
-                y={territory.centroid.y + 4 + liftY}
+                y={territory.centroid.y + liftY}
                 fontSize={10}
-                fill="#fff"
+                fill="#0f172a"
+                fontWeight={800}
                 textAnchor="middle"
                 dominantBaseline="middle"
+                alignmentBaseline="middle"
+                dy="0.02em"
               >
                 {territory.troops}
               </text>
@@ -472,7 +585,7 @@ export default function MapBoard({
                 fill="none"
                 stroke="#dc2626"
                 strokeWidth={4}
-                strokeOpacity={0.92}
+                strokeOpacity={1}
                 style={{ filter: "drop-shadow(0px 0px 6px rgba(220,38,38,0.55))" }}
               />
             )}
@@ -482,7 +595,7 @@ export default function MapBoard({
                 fill="none"
                 stroke="#dc2626"
                 strokeWidth={4}
-                strokeOpacity={0.92}
+                strokeOpacity={1}
                 strokeDasharray="7 4"
                 style={{ filter: "drop-shadow(0px 0px 6px rgba(220,38,38,0.55))" }}
               />
@@ -493,7 +606,7 @@ export default function MapBoard({
                 fill="none"
                 stroke="#dc2626"
                 strokeWidth={3.5}
-                strokeOpacity={0.95}
+                strokeOpacity={1}
                 markerEnd="url(#opponent-arrow-head)"
                 strokeLinecap="round"
                 style={{ filter: "drop-shadow(0px 0px 5px rgba(220,38,38,0.45))" }}
@@ -509,8 +622,9 @@ export default function MapBoard({
           const color = isGain ? "#16a34a" : "#dc2626";
           const prefix = isGain ? "+" : "-";
           return (
-            <g key={popup.id} pointerEvents="none" opacity={0.95}>
+            <g key={popup.id} pointerEvents="none" opacity={1}>
               <text
+                className="troop-popup-text"
                 x={territory.centroid.x}
                 y={territory.centroid.y + 24}
                 fill={color}
@@ -520,16 +634,6 @@ export default function MapBoard({
               >
                 {prefix}
                 {popup.amount}
-                <animate attributeName="opacity" from="0" to="1" dur="0.12s" fill="freeze" />
-                <animate attributeName="opacity" from="1" to="0" begin="0.65s" dur="0.45s" fill="freeze" />
-                <animateTransform
-                  attributeName="transform"
-                  type="translate"
-                  from="0 0"
-                  to="0 -28"
-                  dur="1.1s"
-                  fill="freeze"
-                />
               </text>
             </g>
           );

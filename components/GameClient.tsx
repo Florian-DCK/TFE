@@ -16,13 +16,26 @@ import PlayerSidebar from "./PlayerSidebar";
 
 type Feedback = { kind: "success" | "error" | "info"; message: string };
 type PendingAction = { action: ClientAction };
-type CombatOverlay =
-  | { stage: "rolling" }
-  | { stage: "result"; result: "win" | "lose" }
-  | null;
+type BattleSummary = {
+  attackerName: string;
+  defenderName: string;
+  fromTerritoryKey: string;
+  toTerritoryKey: string;
+  attackerRolls: number[];
+  defenderRolls: number[];
+  attackerLosses: number;
+  defenderLosses: number;
+};
+type CombatOverlay = { stage: "rolling" } | null;
 type OpponentVisual = { fromTerritoryKey: string | null; toTerritoryKey: string | null } | null;
 type TroopPopup = { id: string; territoryKey: string; amount: number; kind: "loss" | "gain" };
-type ReinforcementIntro = { amount: number; visible: boolean } | null;
+type PhaseIntro = {
+  phase: "reinforce" | "attack" | "fortify";
+  title: string;
+  subtitle: string;
+  amount: number | null;
+  visible: boolean;
+} | null;
 
 function singleAttackWinChance(attackerTroops: number, defenderTroops: number, requestedAttackDice: number) {
   if (attackerTroops <= 1 || defenderTroops <= 0) return 0;
@@ -176,7 +189,10 @@ function applyOptimisticAction(state: GameStateDTO, action: ClientAction, myPlay
     const currentIdx = alive.findIndex((p) => p.id === next.currentTurnPlayerId);
     const nextPlayer = currentIdx >= 0 ? alive[(currentIdx + 1) % alive.length] : alive[0];
     if (!nextPlayer) return state;
-    next.turnNumber += 1;
+    const nextIdx = alive.findIndex((p) => p.id === nextPlayer.id);
+    if (currentIdx >= 0 && nextIdx >= 0 && nextIdx <= currentIdx) {
+      next.turnNumber += 1;
+    }
     next.currentTurnPlayerId = nextPlayer.id;
     next.currentPhase = "reinforce";
     const upcoming = next.players.find((p) => p.id === nextPlayer.id);
@@ -243,7 +259,8 @@ export default function GameClient({
   const [floatingNotice, setFloatingNotice] = useState<Feedback | null>(null);
   const [floatingNoticeVisible, setFloatingNoticeVisible] = useState(false);
   const [troopPopups, setTroopPopups] = useState<TroopPopup[]>([]);
-  const [reinforcementIntro, setReinforcementIntro] = useState<ReinforcementIntro>(null);
+  const [phaseIntro, setPhaseIntro] = useState<PhaseIntro>(null);
+  const [lastBattleSummary, setLastBattleSummary] = useState<BattleSummary | null>(null);
 
   const [attackPrompt, setAttackPrompt] = useState<{
     from: string;
@@ -268,10 +285,11 @@ export default function GameClient({
   const myPlayerIdRef = useRef<string | null>(null);
   const opponentActionVisualTimerRef = useRef<number | null>(null);
   const opponentIntentVisualRef = useRef<OpponentVisual>(null);
-  const reinforcementIntroKeyRef = useRef<string>("");
-  const reinforcementIntroShowTimerRef = useRef<number | null>(null);
-  const reinforcementIntroFadeTimerRef = useRef<number | null>(null);
-  const reinforcementIntroClearTimerRef = useRef<number | null>(null);
+  const animatedLogIdsRef = useRef<Set<string>>(new Set());
+  const phaseIntroKeyRef = useRef<string>("");
+  const phaseIntroShowTimerRef = useRef<number | null>(null);
+  const phaseIntroFadeTimerRef = useRef<number | null>(null);
+  const phaseIntroClearTimerRef = useRef<number | null>(null);
   const joinNameRef = useRef<string>(displayName);
 
   useEffect(() => {
@@ -279,9 +297,7 @@ export default function GameClient({
     const guestFromStorage =
       typeof window !== "undefined" ? (window.localStorage.getItem("guest_pseudo") ?? "").trim().slice(0, 50) : "";
 
-    const preferStoredGuest =
-      normalizedProp.length === 0 || (normalizedProp.startsWith("Guest-") && guestFromStorage.length > 0);
-    const resolvedName = (preferStoredGuest ? guestFromStorage : normalizedProp) || "Guest-Player";
+    const resolvedName = normalizedProp || guestFromStorage || "Guest-Player";
 
     joinNameRef.current = resolvedName;
     if (resolvedName.startsWith("Guest-")) {
@@ -314,6 +330,51 @@ export default function GameClient({
       setTroopPopups((prev) => prev.filter((entry) => entry.id !== popup.id));
     }, 1150);
   }, []);
+
+  const animateTroopPopupsFromLog = useCallback(
+    (payload: ActionLogDTO) => {
+      if (animatedLogIdsRef.current.has(payload.id)) return;
+      const raw = payload.payload as Record<string, unknown>;
+
+      if (payload.type === "place_reinforcement") {
+        const territoryKey = typeof raw.territoryKey === "string" ? raw.territoryKey : null;
+        const troops = Number(raw.troops ?? 1);
+        if (territoryKey && Number.isFinite(troops) && troops > 0) {
+          queueTroopPopup(territoryKey, troops);
+        }
+      }
+
+      if (payload.type === "attack") {
+        const from = typeof raw.fromTerritoryKey === "string" ? raw.fromTerritoryKey : null;
+        const to = typeof raw.toTerritoryKey === "string" ? raw.toTerritoryKey : null;
+        const attackerLosses = Number(raw.attackerLosses ?? 0);
+        const defenderLosses = Number(raw.defenderLosses ?? 0);
+        if (from && Number.isFinite(attackerLosses) && attackerLosses > 0) {
+          queueTroopPopup(from, -attackerLosses);
+        }
+        if (to && Number.isFinite(defenderLosses) && defenderLosses > 0) {
+          queueTroopPopup(to, -defenderLosses);
+        }
+      }
+
+      if (payload.type === "fortify") {
+        const from = typeof raw.fromTerritoryKey === "string" ? raw.fromTerritoryKey : null;
+        const to = typeof raw.toTerritoryKey === "string" ? raw.toTerritoryKey : null;
+        const troops = Number(raw.troops ?? 0);
+        if (Number.isFinite(troops) && troops > 0) {
+          if (from) queueTroopPopup(from, -troops);
+          if (to) queueTroopPopup(to, troops);
+        }
+      }
+
+      animatedLogIdsRef.current.add(payload.id);
+      if (animatedLogIdsRef.current.size > 500) {
+        const oldest = animatedLogIdsRef.current.values().next().value;
+        if (oldest) animatedLogIdsRef.current.delete(oldest);
+      }
+    },
+    [queueTroopPopup],
+  );
 
   useEffect(() => {
     myPlayerIdRef.current = myPlayerId;
@@ -356,11 +417,20 @@ export default function GameClient({
 
   useEffect(() => {
     const s = getSocket();
-    s.emit("join_game", { gameCode: code, name: joinNameRef.current });
+    const tryJoinGame = () => {
+      s.emit("join_game", { gameCode: code, name: joinNameRef.current });
+    };
 
     const onGameState = (payload: GameStateDTO) => {
       if (payload.gameCode !== code) return;
       setJoinError(null);
+      if (!myPlayerIdRef.current) {
+        const resolved = payload.players.find((player) => player.displayName === joinNameRef.current);
+        if (resolved) {
+          myPlayerIdRef.current = resolved.id;
+          setMyPlayerId(resolved.id);
+        }
+      }
       const previousConfirmed = confirmedRef.current;
       const nextConfirmed =
         payload.logs.length === 0 && previousConfirmed ? { ...payload, logs: previousConfirmed.logs } : payload;
@@ -396,26 +466,11 @@ export default function GameClient({
 
     const onActionApplied = (patch: GameStatePatchDTO) => {
       if (patch.gameCode !== code) return;
-      const previousConfirmed = confirmedRef.current;
       if (confirmedRef.current) {
         confirmedRef.current = applyGamePatch(confirmedRef.current, patch);
       }
       if (pendingActionsRef.current.length > 0) {
         pendingActionsRef.current = pendingActionsRef.current.slice(1);
-      }
-      if (previousConfirmed && patch.territories?.length) {
-        const prevTroopsByKey = new Map(
-          previousConfirmed.territories.map((territory) => [territory.territoryKey, territory.troops]),
-        );
-        for (const territoryPatch of patch.territories) {
-          if (typeof territoryPatch.troops !== "number") continue;
-          const prevTroops = prevTroopsByKey.get(territoryPatch.territoryKey);
-          if (typeof prevTroops !== "number") continue;
-          const delta = territoryPatch.troops - prevTroops;
-          if (delta !== 0) {
-            queueTroopPopup(territoryPatch.territoryKey, delta);
-          }
-        }
       }
       recomputeProjectedState();
       setSelectedFrom(null);
@@ -434,6 +489,8 @@ export default function GameClient({
     };
 
     const onActionLog = (payload: ActionLogDTO) => {
+      animateTroopPopupsFromLog(payload);
+
       const confirmed = confirmedRef.current;
       if (confirmed && !confirmed.logs.some((log) => log.id === payload.id)) {
         confirmedRef.current = { ...confirmed, logs: [...confirmed.logs, payload].slice(-20) };
@@ -442,16 +499,37 @@ export default function GameClient({
 
       if (payload.type === "attack") {
         const raw = payload.payload as Record<string, unknown>;
+        const fromTerritoryKey = typeof raw.fromTerritoryKey === "string" ? raw.fromTerritoryKey : "?";
+        const toTerritoryKey = typeof raw.toTerritoryKey === "string" ? raw.toTerritoryKey : "?";
+        const attackerRolls = Array.isArray(raw.attackRolls)
+          ? raw.attackRolls.map((value) => Number(value)).filter((value) => Number.isFinite(value))
+          : [];
+        const defenderRolls = Array.isArray(raw.defenseRolls)
+          ? raw.defenseRolls.map((value) => Number(value)).filter((value) => Number.isFinite(value))
+          : [];
         const attackerLosses = Number(raw.attackerLosses ?? 0);
         const defenderLosses = Number(raw.defenderLosses ?? 0);
-        const actorIsMe = payload.actorPlayerId && payload.actorPlayerId === myPlayerIdRef.current;
-        if (actorIsMe) {
-          setCombatOverlay({
-            stage: "result",
-            result: defenderLosses > attackerLosses ? "win" : "lose",
-          });
-          window.setTimeout(() => setCombatOverlay(null), 1400);
-        }
+        const stateForNames = confirmedRef.current ?? gameState;
+        const attackerName =
+          stateForNames?.players.find((player) => player.id === payload.actorPlayerId)?.displayName ?? "Attaquant";
+        const targetBeforePatch = stateForNames?.territories.find(
+          (territory) => territory.territoryKey === toTerritoryKey,
+        );
+        const defenderName =
+          stateForNames?.players.find((player) => player.id === targetBeforePatch?.ownerPlayerId)?.displayName ??
+          "Defenseur";
+        const summary: BattleSummary = {
+          attackerName,
+          defenderName,
+          fromTerritoryKey,
+          toTerritoryKey,
+          attackerRolls,
+          defenderRolls,
+          attackerLosses: Number.isFinite(attackerLosses) ? attackerLosses : 0,
+          defenderLosses: Number.isFinite(defenderLosses) ? defenderLosses : 0,
+        };
+        setLastBattleSummary(summary);
+        setCombatOverlay(null);
       }
 
       if (payload.actorPlayerId && payload.actorPlayerId !== myPlayerIdRef.current) {
@@ -497,6 +575,8 @@ export default function GameClient({
     s.on("action_log", onActionLog);
     s.on("action_applied", onActionApplied);
     s.on("opponent_intent", onOpponentIntent);
+    s.on("connect", tryJoinGame);
+    tryJoinGame();
 
     return () => {
       s.off("game_state", onGameState);
@@ -506,9 +586,17 @@ export default function GameClient({
       s.off("action_log", onActionLog);
       s.off("action_applied", onActionApplied);
       s.off("opponent_intent", onOpponentIntent);
+      s.off("connect", tryJoinGame);
       s.emit("leave_game", { gameCode: code });
     };
-  }, [code, queueTroopPopup, recomputeProjectedState, setOpponentActionVisualWithTTL]);
+  }, [animateTroopPopupsFromLog, code, recomputeProjectedState, setOpponentActionVisualWithTTL]);
+
+  useEffect(() => {
+    if (!gameState?.logs?.length) return;
+    for (const log of gameState.logs) {
+      animateTroopPopupsFromLog(log);
+    }
+  }, [animateTroopPopupsFromLog, gameState?.logs]);
 
   const territoryByKey = useMemo(
     () => new Map(gameState?.territories.map((t) => [t.territoryKey, t]) ?? []),
@@ -591,33 +679,60 @@ export default function GameClient({
   };
 
   useEffect(() => {
-    if (!gameState || !isMyTurn || currentPhase !== "reinforce") return;
-    const amount = myPlayer?.reinforcements ?? 0;
-    if (amount <= 0) return;
+    if (!gameState || gameState.status !== "in_progress") return;
 
-    const introKey = `${turnNumber}-${currentTurnPlayerId}-reinforce`;
-    if (reinforcementIntroKeyRef.current === introKey) return;
-    reinforcementIntroKeyRef.current = introKey;
+    const currentPlayer = gameState.players.find((player) => player.id === currentTurnPlayerId) ?? null;
+    if (!currentPlayer) return;
+    const isCurrentTurnMine = Boolean(myPlayerId) && currentTurnPlayerId === myPlayerId;
 
-    if (reinforcementIntroShowTimerRef.current) window.clearTimeout(reinforcementIntroShowTimerRef.current);
-    if (reinforcementIntroFadeTimerRef.current) window.clearTimeout(reinforcementIntroFadeTimerRef.current);
-    if (reinforcementIntroClearTimerRef.current) window.clearTimeout(reinforcementIntroClearTimerRef.current);
+    const introKey = `${turnNumber}-${currentTurnPlayerId}-${currentPhase}`;
+    if (phaseIntroKeyRef.current === introKey) return;
+    phaseIntroKeyRef.current = introKey;
 
-    reinforcementIntroShowTimerRef.current = window.setTimeout(() => {
-      setReinforcementIntro({ amount, visible: true });
+    if (phaseIntroShowTimerRef.current) window.clearTimeout(phaseIntroShowTimerRef.current);
+    if (phaseIntroFadeTimerRef.current) window.clearTimeout(phaseIntroFadeTimerRef.current);
+    if (phaseIntroClearTimerRef.current) window.clearTimeout(phaseIntroClearTimerRef.current);
+
+    const nextIntro: Exclude<PhaseIntro, null> =
+      currentPhase === "reinforce"
+        ? {
+            phase: "reinforce",
+            title: isCurrentTurnMine ? "Ton tour" : "Tour adverse",
+            subtitle: "Phase Renfort",
+            amount: Math.max(0, currentPlayer.reinforcements ?? 0),
+            visible: false,
+          }
+        : currentPhase === "attack"
+          ? {
+              phase: "attack",
+              title: isCurrentTurnMine ? "Ton tour" : "Tour adverse",
+              subtitle: "Phase Attaque",
+              amount: null,
+              visible: false,
+            }
+          : {
+              phase: "fortify",
+              title: isCurrentTurnMine ? "Ton tour" : "Tour adverse",
+              subtitle: "Phase Fortification",
+              amount: null,
+              visible: false,
+            };
+
+    phaseIntroShowTimerRef.current = window.setTimeout(() => {
+      setPhaseIntro({ ...nextIntro, visible: true });
     }, 0);
-    reinforcementIntroFadeTimerRef.current = window.setTimeout(
-      () => setReinforcementIntro((prev) => (prev ? { ...prev, visible: false } : prev)),
+    phaseIntroFadeTimerRef.current = window.setTimeout(
+      () => setPhaseIntro((prev) => (prev ? { ...prev, visible: false } : prev)),
       1250,
     );
-    reinforcementIntroClearTimerRef.current = window.setTimeout(() => setReinforcementIntro(null), 1750);
-  }, [currentPhase, currentTurnPlayerId, gameState, isMyTurn, myPlayer?.reinforcements, turnNumber]);
+    phaseIntroClearTimerRef.current = window.setTimeout(() => setPhaseIntro(null), 1750);
+  }, [currentPhase, currentTurnPlayerId, gameState, myPlayerId, turnNumber]);
 
   useEffect(() => {
     return () => {
-      if (reinforcementIntroShowTimerRef.current) window.clearTimeout(reinforcementIntroShowTimerRef.current);
-      if (reinforcementIntroFadeTimerRef.current) window.clearTimeout(reinforcementIntroFadeTimerRef.current);
-      if (reinforcementIntroClearTimerRef.current) window.clearTimeout(reinforcementIntroClearTimerRef.current);
+      if (phaseIntroShowTimerRef.current) window.clearTimeout(phaseIntroShowTimerRef.current);
+      if (phaseIntroFadeTimerRef.current) window.clearTimeout(phaseIntroFadeTimerRef.current);
+      if (phaseIntroClearTimerRef.current) window.clearTimeout(phaseIntroClearTimerRef.current);
     };
   }, []);
 
@@ -745,7 +860,12 @@ export default function GameClient({
     : "border-amber-200 bg-white/92 text-slate-700";
 
   return (
-    <main className="fixed inset-0 overflow-hidden bg-gradient-to-br from-cyan-100 via-amber-50 to-emerald-100">
+    <main
+      className="fixed inset-0 overflow-hidden"
+      style={{
+        backgroundColor: "#0f172a",
+      }}
+    >
       <section className="absolute inset-0 z-0">
         <MapBoard
           gameState={gameState}
@@ -779,14 +899,62 @@ export default function GameClient({
       )}
 
       <aside className="pointer-events-none absolute right-2 top-28 z-20 hidden w-[360px] xl:block">
-        <div className="pointer-events-auto panel max-h-[72vh] overflow-hidden border-amber-200/80 bg-white/90 p-3 shadow-lg backdrop-blur">
+        <div className="pointer-events-auto panel max-h-[72vh] overflow-y-auto border-amber-200/80 bg-white/90 p-3 shadow-lg backdrop-blur">
           <BattleLog gameState={gameState} />
+          <div className="mt-3 rounded-lg border border-slate-200 bg-white/90 p-3">
+            <h3 className="text-sm font-extrabold text-slate-800">Derniere bataille</h3>
+            {lastBattleSummary ? (
+              <>
+                <p className="mt-1 text-xs text-slate-600">
+                  {lastBattleSummary.fromTerritoryKey} {"->"} {lastBattleSummary.toTerritoryKey}
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
+                    <p className="font-semibold text-slate-700">{lastBattleSummary.attackerName}</p>
+                    <p className="mt-1 text-slate-800">Des: {lastBattleSummary.attackerRolls.join(" - ") || "-"}</p>
+                    <p className="text-rose-700">Pertes: -{lastBattleSummary.attackerLosses}</p>
+                  </div>
+                  <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
+                    <p className="font-semibold text-slate-700">{lastBattleSummary.defenderName}</p>
+                    <p className="mt-1 text-slate-800">Des: {lastBattleSummary.defenderRolls.join(" - ") || "-"}</p>
+                    <p className="text-rose-700">Pertes: -{lastBattleSummary.defenderLosses}</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="mt-1 text-xs text-slate-500">Aucune bataille pour le moment.</p>
+            )}
+          </div>
         </div>
       </aside>
 
       <aside className="pointer-events-none absolute right-2 top-[calc(28vh)] z-20 xl:hidden">
-        <div className="pointer-events-auto panel max-h-[36vh] w-[320px] overflow-hidden border-amber-200/80 bg-white/90 p-3 shadow-lg backdrop-blur">
+        <div className="pointer-events-auto panel max-h-[45vh] w-[320px] overflow-y-auto border-amber-200/80 bg-white/90 p-3 shadow-lg backdrop-blur">
           <BattleLog gameState={gameState} />
+          <div className="mt-3 rounded-lg border border-slate-200 bg-white/90 p-3">
+            <h3 className="text-sm font-extrabold text-slate-800">Derniere bataille</h3>
+            {lastBattleSummary ? (
+              <>
+                <p className="mt-1 text-xs text-slate-600">
+                  {lastBattleSummary.fromTerritoryKey} {"->"} {lastBattleSummary.toTerritoryKey}
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
+                    <p className="font-semibold text-slate-700">{lastBattleSummary.attackerName}</p>
+                    <p className="mt-1 text-slate-800">Des: {lastBattleSummary.attackerRolls.join(" - ") || "-"}</p>
+                    <p className="text-rose-700">Pertes: -{lastBattleSummary.attackerLosses}</p>
+                  </div>
+                  <div className="rounded-md border border-slate-200 bg-slate-50 p-2">
+                    <p className="font-semibold text-slate-700">{lastBattleSummary.defenderName}</p>
+                    <p className="mt-1 text-slate-800">Des: {lastBattleSummary.defenderRolls.join(" - ") || "-"}</p>
+                    <p className="text-rose-700">Pertes: -{lastBattleSummary.defenderLosses}</p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="mt-1 text-xs text-slate-500">Aucune bataille pour le moment.</p>
+            )}
+          </div>
         </div>
       </aside>
 
@@ -832,37 +1000,49 @@ export default function GameClient({
 
       {combatOverlay && (
         <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
-          {combatOverlay.stage === "rolling" ? (
-            <div className="rounded-2xl border border-amber-200 bg-white/92 px-8 py-6 text-center shadow-2xl backdrop-blur">
-              <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border-4 border-amber-300 border-t-amber-600 animate-spin" />
-              <p className="text-lg font-extrabold text-amber-700">COMBAT</p>
-              <p className="text-sm text-slate-600">Resolution des des...</p>
-            </div>
-          ) : (
-            <div
-              className={`rounded-2xl border px-10 py-8 text-center shadow-2xl backdrop-blur transition-all duration-300 ${
-                combatOverlay.result === "win"
-                  ? "border-emerald-300 bg-emerald-100/95 text-emerald-800"
-                  : "border-rose-300 bg-rose-100/95 text-rose-800"
-              }`}
-            >
-              <p className="text-xs font-bold uppercase tracking-[0.25em]">Resultat</p>
-              <p className="mt-2 text-3xl font-black">{combatOverlay.result === "win" ? "WIN" : "LOST"}</p>
-            </div>
-          )}
+          <div className="rounded-2xl border border-amber-200 bg-white/92 px-8 py-6 text-center shadow-2xl backdrop-blur">
+            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full border-4 border-amber-300 border-t-amber-600 animate-spin" />
+            <p className="text-lg font-extrabold text-amber-700">COMBAT</p>
+            <p className="text-sm text-slate-600">Resolution des des...</p>
+          </div>
         </div>
       )}
 
-      {reinforcementIntro && (
+      {phaseIntro && (
         <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center">
           <div
-            className={`rounded-2xl border border-emerald-300 bg-emerald-100/95 px-8 py-6 text-center shadow-2xl backdrop-blur transition-all duration-300 ${
-              reinforcementIntro.visible ? "scale-100 opacity-100" : "scale-95 opacity-0"
-            }`}
+            className={`rounded-2xl border px-8 py-6 text-center shadow-2xl backdrop-blur transition-all duration-300 ${
+              phaseIntro.phase === "reinforce"
+                ? "border-emerald-300 bg-emerald-100/95 text-emerald-800"
+                : phaseIntro.phase === "attack"
+                  ? "border-amber-300 bg-amber-100/95 text-amber-800"
+                  : "border-sky-300 bg-sky-100/95 text-sky-800"
+            } ${phaseIntro.visible ? "scale-100 opacity-100" : "scale-95 opacity-0"}`
+            }
           >
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-700">Renforts</p>
-            <p className="mt-1 text-5xl font-black text-emerald-800">+{reinforcementIntro.amount}</p>
-            <p className="mt-1 text-sm font-semibold text-emerald-700">troupes recues</p>
+            <p
+              className={`text-xs font-bold uppercase tracking-[0.25em] ${
+                phaseIntro.phase === "reinforce"
+                  ? "text-emerald-700"
+                  : phaseIntro.phase === "attack"
+                    ? "text-amber-700"
+                    : "text-sky-700"
+              }`}
+            >
+              {phaseIntro.title}
+            </p>
+            <p className="mt-2 text-3xl font-black">{phaseIntro.subtitle}</p>
+            {phaseIntro.phase === "reinforce" && phaseIntro.amount && phaseIntro.amount > 0 && (
+              <>
+                <p className="mt-2 text-5xl font-black">+{phaseIntro.amount}</p>
+                <p className="mt-1 text-sm font-semibold text-emerald-700">troupes recues</p>
+              </>
+            )}
+            {phaseIntro.phase !== "reinforce" && (
+              <p className="mt-2 text-sm font-semibold">
+                {phaseIntro.title === "Ton tour" ? "A toi de jouer" : "Observe et prepare ta riposte"}
+              </p>
+            )}
           </div>
         </div>
       )}

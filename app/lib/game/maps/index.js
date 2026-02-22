@@ -20,6 +20,7 @@ const mapDefinitionSchema = z.object({
   name: z.string().min(1),
   version: z.number().int().positive(),
   viewBox: z.string().min(1),
+  backgroundPng: z.string().min(1).nullable().optional(),
   continents: z
     .array(
       z.object({

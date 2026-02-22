@@ -21,6 +21,24 @@ function nextReinforcements(gameState: GameStateDTO, playerId: string) {
   return base + continentBonus;
 }
 
+function reinforcementBreakdown(gameState: GameStateDTO, playerId: string) {
+  const ownedTerritories = gameState.territories.filter((territory) => territory.ownerPlayerId === playerId);
+  const territoriesCount = ownedTerritories.length;
+  const base = Math.max(3, Math.floor(territoriesCount / 3));
+
+  const continentBonuses: Array<{ name: string; bonus: number }> = [];
+  for (const continent of gameState.map.continents) {
+    const continentTerritories = gameState.territories.filter((territory) => territory.continent === continent.key);
+    if (continentTerritories.length === 0) continue;
+    if (continentTerritories.every((territory) => territory.ownerPlayerId === playerId)) {
+      continentBonuses.push({ name: continent.name, bonus: continent.bonus });
+    }
+  }
+
+  const total = base + continentBonuses.reduce((sum, continent) => sum + continent.bonus, 0);
+  return { territoriesCount, base, continentBonuses, total };
+}
+
 export default function PlayerSidebar({
   gameState,
   myPlayerId,
@@ -40,13 +58,36 @@ export default function PlayerSidebar({
 
   return (
     <aside className="pointer-events-none absolute left-3 top-20 z-20 w-[min(320px,calc(100vw-1.2rem))]">
-      <div className="max-h-[74vh] space-y-2 overflow-y-auto pr-1">
+      <div className="space-y-2 pr-1">
         {orderedPlayers.map((player) => {
           const isMe = player.id === myPlayerId;
           const isCurrent = player.id === gameState.currentTurnPlayerId;
           const isCurrentReinforce = isCurrent && gameState.currentPhase === "reinforce";
           const troops = troopCountByPlayer.get(player.id) ?? 0;
           const nextReinforcement = nextReinforcements(gameState, player.id);
+          const breakdown = reinforcementBreakdown(gameState, player.id);
+          const tooltipContent = (
+            <>
+              <p className="font-bold text-slate-900">Calcul des renforts</p>
+              <p className="mt-1">
+                {breakdown.territoriesCount} territoires {"->"} +{breakdown.base}
+              </p>
+              {breakdown.continentBonuses.length > 0 ? (
+                <div className="mt-1 space-y-0.5">
+                  {breakdown.continentBonuses.map((continent) => (
+                    <p key={`${player.id}-${continent.name}`}>
+                      {continent.name} {"->"} +{continent.bonus}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-1 text-slate-500">Aucun bonus de continent</p>
+              )}
+              <p className="mt-1 border-t border-slate-200 pt-1 font-bold text-slate-900">
+                Total {"->"} +{breakdown.total}
+              </p>
+            </>
+          );
 
           return (
             <div
@@ -76,8 +117,16 @@ export default function PlayerSidebar({
                   </p>
                 </div>
                 {isCurrentReinforce && (
-                  <div className="rounded-lg bg-emerald-500 px-2 py-1 text-right text-xs font-black text-white shadow">
-                    +{player.reinforcements}
+                  <div className="group relative">
+                    <div className="rounded-lg bg-emerald-500 px-2 py-1 text-right text-xs font-black text-white shadow">
+                      +{player.reinforcements}
+                    </div>
+                    <div
+                      role="tooltip"
+                      className="pointer-events-none invisible absolute bottom-[calc(100%+8px)] right-0 z-40 w-64 rounded-lg border border-slate-200 bg-white p-2 text-left text-[11px] text-slate-700 opacity-0 shadow-xl transition-opacity duration-150 group-hover:visible group-hover:opacity-100"
+                    >
+                      {tooltipContent}
+                    </div>
                   </div>
                 )}
               </div>
@@ -89,8 +138,14 @@ export default function PlayerSidebar({
                 <div className="rounded-lg bg-slate-700/90 px-2 py-1 text-white">
                   U {troops}
                 </div>
-                <div className="rounded-lg bg-amber-500/95 px-2 py-1 text-amber-950">
+                <div className="group relative rounded-lg bg-amber-500/95 px-2 py-1 text-amber-950">
                   R+ {nextReinforcement}
+                  <div
+                    role="tooltip"
+                    className="pointer-events-none invisible absolute bottom-[calc(100%+8px)] right-0 z-40 w-64 rounded-lg border border-slate-200 bg-white p-2 text-left text-[11px] text-slate-700 opacity-0 shadow-xl transition-opacity duration-150 group-hover:visible group-hover:opacity-100"
+                  >
+                    {tooltipContent}
+                  </div>
                 </div>
               </div>
             </div>

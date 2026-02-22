@@ -6,6 +6,9 @@ import { useRouter } from "@/i18n/navigation";
 
 type Member = { id: string; name: string; isHost?: boolean };
 type MapOption = { key: string; name: string; version: number; territories: number };
+function normalizeLobbyCode(raw: string) {
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+}
 
 export default function LobbyClient({
   code,
@@ -15,6 +18,7 @@ export default function LobbyClient({
   displayName: string;
 }) {
   const router = useRouter();
+  const normalizedCode = normalizeLobbyCode(code);
   const [members, setMembers] = useState<Member[]>([]);
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,21 +30,18 @@ export default function LobbyClient({
   useEffect(() => {
     const s = getSocket();
 
-    s.emit("request_maps_list");
-    s.emit("join_lobby", { lobbyCode: code, name: displayName });
-
     const onLobbyState = (payload: {
       lobbyCode: string;
       members: Member[];
       gameCode: string | null;
     }) => {
-      if (payload.lobbyCode !== code) return;
+      if (normalizeLobbyCode(payload.lobbyCode) !== normalizedCode) return;
       setMembers(payload.members);
       setGameCode(payload.gameCode);
     };
 
     const onGameStarted = (payload: { lobbyCode: string; gameCode: string }) => {
-      if (payload.lobbyCode !== code) return;
+      if (normalizeLobbyCode(payload.lobbyCode) !== normalizedCode) return;
       if (startDeadlineRef.current) window.clearTimeout(startDeadlineRef.current);
       startDeadlineRef.current = null;
       setIsStarting(false);
@@ -50,7 +51,7 @@ export default function LobbyClient({
     };
 
     const onLobbyLocked = (payload: { lobbyCode: string; gameCode: string }) => {
-      if (payload.lobbyCode !== code) return;
+      if (normalizeLobbyCode(payload.lobbyCode) !== normalizedCode) return;
       router.push(`/game/${payload.gameCode}`);
     };
 
@@ -71,6 +72,8 @@ export default function LobbyClient({
     s.on("lobby_locked", onLobbyLocked);
     s.on("action_rejected", onRejected);
     s.on("maps_list", onMapsList);
+    s.emit("request_maps_list");
+    s.emit("join_lobby", { lobbyCode: normalizedCode, name: displayName });
 
     return () => {
       s.off("lobby_state", onLobbyState);
@@ -78,9 +81,9 @@ export default function LobbyClient({
       s.off("lobby_locked", onLobbyLocked);
       s.off("action_rejected", onRejected);
       s.off("maps_list", onMapsList);
-      s.emit("leave_lobby", { lobbyCode: code });
+      s.emit("leave_lobby", { lobbyCode: normalizedCode });
     };
-  }, [code, displayName, router]);
+  }, [displayName, normalizedCode, router]);
 
   const canStart = members.length >= 2 && !gameCode;
 
@@ -105,7 +108,7 @@ export default function LobbyClient({
 
     s.emit(
       "start_game",
-      { lobbyCode: code, mapKey: selectedMapKey },
+      { lobbyCode: normalizedCode, mapKey: selectedMapKey },
       (response?: { ok?: boolean; gameCode?: string; reason?: string }) => {
         if (settled) return;
         settled = true;

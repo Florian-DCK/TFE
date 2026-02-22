@@ -43,6 +43,10 @@ const actionRateLimit = new Map();
 
 const sessionSecret = process.env.SESSION_SECRET ?? process.env.SECRET;
 const sessionKey = sessionSecret ? new TextEncoder().encode(sessionSecret) : null;
+function normalizeLobbyCode(raw) {
+  if (typeof raw !== "string") return "";
+  return raw.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+}
 
 function getLobbyMap(lobbyCode) {
   if (!lobbies.has(lobbyCode)) lobbies.set(lobbyCode, new Map());
@@ -128,54 +132,62 @@ io.on("connection", (socket) => {
   });
 
   socket.on("join_lobby", async ({ lobbyCode, name }) => {
-    if (!lobbyCode) return;
+    const code = normalizeLobbyCode(lobbyCode);
+    if (!code) return;
     socket.emit("maps_list", { maps: listMapsMetadata() });
 
-    const existingGameCode = lobbyToGameCode.get(lobbyCode);
+    const existingGameCode = lobbyToGameCode.get(code);
     const existing = existingGameCode
       ? await getGameStateDTO(prisma, existingGameCode)
-      : await findLatestGameByLobbyCode(prisma, lobbyCode);
+      : await findLatestGameByLobbyCode(prisma, code);
 
     if (existing?.status === "in_progress") {
-      lobbyToGameCode.set(lobbyCode, existing.code);
-      socket.emit("lobby_locked", { lobbyCode, gameCode: existing.code });
+      lobbyToGameCode.set(code, existing.code);
+      socket.emit("lobby_locked", { lobbyCode: code, gameCode: existing.code });
       return;
     }
 
     const userId = await getSocketUserId(socket);
+    const previousCode = socket.data.lobbyCode;
+    if (previousCode && previousCode !== code) {
+      socket.leave(previousCode);
+      const previousLobby = getLobbyMap(previousCode);
+      previousLobby.delete(socket.id);
+      emitLobbyState(previousCode);
+    }
 
-    socket.data.lobbyCode = lobbyCode;
+    socket.data.lobbyCode = code;
     socket.data.name = name || `Player-${socket.id.slice(-4)}`;
     socket.data.userId = userId;
 
-    socket.join(lobbyCode);
+    socket.join(code);
 
-    const lobby = getLobbyMap(lobbyCode);
+    const lobby = getLobbyMap(code);
     lobby.set(socket.id, {
       id: socket.id,
       name: socket.data.name,
       userId,
     });
 
-    emitLobbyState(lobbyCode);
+    emitLobbyState(code);
   });
 
   socket.on("start_game", async (payload = {}, ack) => {
     try {
-      const lobbyCode = typeof payload?.lobbyCode === "string" ? payload.lobbyCode : undefined;
+      const lobbyCode = normalizeLobbyCode(payload?.lobbyCode);
       const mapKey = typeof payload?.mapKey === "string" ? payload.mapKey : getDefaultMapKey();
       console.log(
         JSON.stringify({
           event: "start_game_received",
           socketId: socket.id,
-          lobbyCode: lobbyCode ?? null,
+          lobbyCode: lobbyCode || null,
           mapKey,
           socketLobbyCode: socket.data.lobbyCode ?? null,
           lobbySize: lobbyCode ? getLobbyMap(lobbyCode).size : null,
         }),
       );
 
-      const code = lobbyCode || socket.data.lobbyCode;
+      const code = lobbyCode || normalizeLobbyCode(socket.data.lobbyCode);
       if (!code) {
         const reason = "Lobby code missing.";
         socket.emit("action_rejected", { reason });
@@ -229,7 +241,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("leave_lobby", ({ lobbyCode }) => {
-    const code = lobbyCode || socket.data.lobbyCode;
+    const code = normalizeLobbyCode(lobbyCode) || normalizeLobbyCode(socket.data.lobbyCode);
     if (!code) return;
 
     socket.leave(code);

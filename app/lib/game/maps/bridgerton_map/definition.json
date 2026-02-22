@@ -1,0 +1,352 @@
+{
+  "mapKey": "bridgerton_map",
+  "name": "Maison Bridgerton",
+  "version": 1,
+  "viewBox": "0 0 1024 560",
+  "continents": [
+    {
+      "key": "continent_1",
+      "name": "Halls",
+      "bonus": 4,
+      "color": "#b735f3"
+    },
+    {
+      "key": "continent_2",
+      "name": "Aile Nord",
+      "bonus": 2,
+      "color": "#7ff0a9"
+    },
+    {
+      "key": "continent_3",
+      "name": "Aile Ouest",
+      "bonus": 2,
+      "color": "#8b74fb"
+    },
+    {
+      "key": "continent_4",
+      "name": "Aile Est",
+      "bonus": 2,
+      "color": "#f025f4"
+    },
+    {
+      "key": "continent_5",
+      "name": "Aile Nord Supérieure",
+      "bonus": 2,
+      "color": "#4ee2e4"
+    },
+    {
+      "key": "continent_6",
+      "name": "Aile Ouest Supérieur",
+      "bonus": 2,
+      "color": "#93e37d"
+    },
+    {
+      "key": "continent_7",
+      "name": "Aile Est Supérieur",
+      "bonus": 2,
+      "color": "#ea9f62"
+    }
+  ],
+  "territories": [
+    {
+      "key": "territory_1",
+      "name": "Salon",
+      "continent": "continent_3",
+      "svgId": "t-territory_1",
+      "adjacency": ["territory_11", "territory_2"],
+      "centroid": {
+        "x": 100.75,
+        "y": 487.75
+      },
+      "pathData": "M180.5 425H38V450H33.5L21 463.5V485L33.5 499H38V519H75.5V530.5L95.5 550.5H121.5L141.5 530.5V519H180.5V492V440V425Z"
+    },
+    {
+      "key": "territory_10",
+      "name": "Salle à manger",
+      "continent": "continent_3",
+      "svgId": "t-territory_10",
+      "adjacency": ["territory_2", "territory_9"],
+      "centroid": {
+        "x": 76.25,
+        "y": 306.5
+      },
+      "pathData": "M37.5 307V240.5H135.5V372.5H37.5V355.5H29.5L17 343V319.5L29.5 307H37.5Z"
+    },
+    {
+      "key": "territory_11",
+      "name": "Salle de bain",
+      "continent": "continent_3",
+      "svgId": "t-territory_11",
+      "adjacency": ["territory_1", "territory_2"],
+      "centroid": {
+        "x": 86.5,
+        "y": 399
+      },
+      "pathData": "M38 373V425H135V373H38Z"
+    },
+    {
+      "key": "territory_12",
+      "name": "Chambre de Daphné",
+      "continent": "continent_6",
+      "svgId": "t-territory_12",
+      "adjacency": ["territory_13"],
+      "centroid": {
+        "x": 612.75,
+        "y": 493.25
+      },
+      "pathData": "M693.5 526.5V498H649.5V429.5H626H550.5V456.5H544.5L532 469V491.5L545.5 505H550.5V526.5H589V538.5L607.5 557H636L655.5 537.5V526.5H693.5Z"
+    },
+    {
+      "key": "territory_13",
+      "name": "Hall d'étage",
+      "continent": "continent_1",
+      "svgId": "t-territory_13",
+      "adjacency": [
+        "territory_12",
+        "territory_14",
+        "territory_15",
+        "territory_16",
+        "territory_17",
+        "territory_18",
+        "territory_19",
+        "territory_2",
+        "territory_20",
+        "territory_21",
+        "territory_22",
+        "territory_23",
+        "territory_9"
+      ],
+      "centroid": {
+        "x": 702.75,
+        "y": 262.25
+      },
+      "pathData": "M649.5 299.5V429.5H550.5V401H624.5V205.5H655V95H680.5V205.5H712H826.5V270H855V429.5H829.5V299.5H710H649.5Z"
+    },
+    {
+      "key": "territory_14",
+      "name": "Chambre d'Eloïse et Hyacinth",
+      "continent": "continent_6",
+      "svgId": "t-territory_14",
+      "adjacency": ["territory_13"],
+      "centroid": {
+        "x": 576.5,
+        "y": 349.75
+      },
+      "pathData": "M551 362.5V401H624.5V298.5H547.5V311H544L528.5 326.5V347L544 362.5H551Z"
+    },
+    {
+      "key": "territory_15",
+      "name": "Buanderie",
+      "continent": "continent_6",
+      "svgId": "t-territory_15",
+      "adjacency": ["territory_13"],
+      "centroid": {
+        "x": 586.25,
+        "y": 271.5
+      },
+      "pathData": "M548 299H550M550 299H624.5V244H550V299Z"
+    },
+    {
+      "key": "territory_16",
+      "name": "Salle de bain",
+      "continent": "continent_6",
+      "svgId": "t-territory_16",
+      "adjacency": ["territory_13"],
+      "centroid": {
+        "x": 586.75,
+        "y": 217.5
+      },
+      "pathData": "M550 191V244H623.5V191H550Z"
+    },
+    {
+      "key": "territory_17",
+      "name": "Chambre de Collin",
+      "continent": "continent_5",
+      "svgId": "t-territory_17",
+      "adjacency": ["territory_13"],
+      "centroid": {
+        "x": 602.5,
+        "y": 150.25
+      },
+      "pathData": "M655 205.5H624V191.5H550V95H655V205.5Z"
+    },
+    {
+      "key": "territory_18",
+      "name": "Chambre d'Anthony",
+      "continent": "continent_5",
+      "svgId": "t-territory_18",
+      "adjacency": ["territory_13", "territory_19"],
+      "centroid": {
+        "x": 739.75,
+        "y": 111.75
+      },
+      "pathData": "M680.5 18V95V205.5H799V18H680.5Z"
+    },
+    {
+      "key": "territory_19",
+      "name": "Chambre de Violet",
+      "continent": "continent_5",
+      "svgId": "t-territory_19",
+      "adjacency": ["territory_13", "territory_18"],
+      "centroid": {
+        "x": 874.25,
+        "y": 134.75
+      },
+      "pathData": "M832 95H799V205H893.5V190H930V167.5H936L949.5 154V130L936 116.5H930V95H900.5V84L881 64.5H851.5L832 84V95Z"
+    },
+    {
+      "key": "territory_2",
+      "name": "Hall d'entrée",
+      "continent": "continent_1",
+      "svgId": "t-territory_2",
+      "adjacency": [
+        "territory_1",
+        "territory_10",
+        "territory_11",
+        "territory_13",
+        "territory_3",
+        "territory_4",
+        "territory_6",
+        "territory_7",
+        "territory_8"
+      ],
+      "centroid": {
+        "x": 224.25,
+        "y": 340.75
+      },
+      "pathData": "M135.5 425H180.5V491H269V425H313V190.5H135.5V425Z"
+    },
+    {
+      "key": "territory_20",
+      "name": "Chambre de Bénédicte",
+      "continent": "continent_7",
+      "svgId": "t-territory_20",
+      "adjacency": ["territory_13", "territory_21"],
+      "centroid": {
+        "x": 888.75,
+        "y": 230.25
+      },
+      "pathData": "M931 270H826.5V205.5H893.5V190.5H931V205.5H938L951 218.5V242.5L938 255.5H931V270Z"
+    },
+    {
+      "key": "territory_21",
+      "name": "Chambre de Gregory",
+      "continent": "continent_7",
+      "svgId": "t-territory_21",
+      "adjacency": ["territory_13", "territory_20"],
+      "centroid": {
+        "x": 915.75,
+        "y": 324.25
+      },
+      "pathData": "M855 378V270.5H930V284.5H976.5V359H930V378H855Z"
+    },
+    {
+      "key": "territory_22",
+      "name": "Salle de bain",
+      "continent": "continent_7",
+      "svgId": "t-territory_22",
+      "adjacency": ["territory_13"],
+      "centroid": {
+        "x": 892.25,
+        "y": 403.75
+      },
+      "pathData": "M929.5 429.5H855V378H929.5V429.5Z"
+    },
+    {
+      "key": "territory_23",
+      "name": "Chambre de Francesca",
+      "continent": "continent_7",
+      "svgId": "t-territory_23",
+      "adjacency": ["territory_13"],
+      "centroid": {
+        "x": 867.25,
+        "y": 494.25
+      },
+      "pathData": "M829.5 498V429.5H929V457H934L948.5 471.5V490.5L934 505H929V528H891V539L871 559H844.5L823 537.5V527H786V498H823H829.5Z"
+    },
+    {
+      "key": "territory_3",
+      "name": "Bureau",
+      "continent": "continent_4",
+      "svgId": "t-territory_3",
+      "adjacency": ["territory_2"],
+      "centroid": {
+        "x": 350,
+        "y": 487.5
+      },
+      "pathData": "M307 519H269.5V424.5H411V448.5H417L430.5 464.5V485L417 499H411V520.5H373.5V532L353.5 550.5H326.5L307 529.5V519Z"
+    },
+    {
+      "key": "territory_4",
+      "name": "Vestiaires",
+      "continent": "continent_4",
+      "svgId": "t-territory_4",
+      "adjacency": ["territory_2"],
+      "centroid": {
+        "x": 362.25,
+        "y": 398.75
+      },
+      "pathData": "M411.5 373V424.5H313V373H411.5Z"
+    },
+    {
+      "key": "territory_5",
+      "name": "Librairie",
+      "continent": "continent_4",
+      "svgId": "t-territory_5",
+      "adjacency": ["territory_6"],
+      "centroid": {
+        "x": 385,
+        "y": 320
+      },
+      "pathData": "M411 373H313V267H411V280H457V354.5H411V373Z"
+    },
+    {
+      "key": "territory_6",
+      "name": "Salle du Billiard",
+      "continent": "continent_4",
+      "svgId": "t-territory_6",
+      "adjacency": ["territory_2", "territory_5"],
+      "centroid": {
+        "x": 372.5,
+        "y": 228.5
+      },
+      "pathData": "M413.5 267.5H313V189.5H413.5V202.5H419.5L432 215V238.892L419.5 251.392L413.5 253V267.5Z"
+    },
+    {
+      "key": "territory_7",
+      "name": "Conservatoire",
+      "continent": "continent_2",
+      "svgId": "t-territory_7",
+      "adjacency": ["territory_2"],
+      "centroid": {
+        "x": 357.5,
+        "y": 126.5
+      },
+      "pathData": "M413.5 164V189.5H284V91.5H316V83L335.5 63.5H365L384.5 83V91.5H413.5V115H418.5L431 127.5V151.5L418.5 164H413.5Z"
+    },
+    {
+      "key": "territory_8",
+      "name": "Salle de Bal",
+      "continent": "continent_2",
+      "svgId": "t-territory_8",
+      "adjacency": ["territory_2"],
+      "centroid": {
+        "x": 224.75,
+        "y": 104.5
+      },
+      "pathData": "M284 191H165.5L167 18H284V191Z"
+    },
+    {
+      "key": "territory_9",
+      "name": "Cuisines",
+      "continent": "continent_2",
+      "svgId": "t-territory_9",
+      "adjacency": ["territory_10", "territory_13"],
+      "centroid": {
+        "x": 102,
+        "y": 167.25
+      },
+      "pathData": "M37.5 94H166.5L165.5 190.5H135.5V240.5H37.5V94Z"
+    }
+  ]
+}

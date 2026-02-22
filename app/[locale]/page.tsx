@@ -30,6 +30,11 @@ export default async function Home({
               <p className="text-sm text-slate-700">
                 Connecte en tant que <span className="font-bold text-slate-900">{user.pseudo}</span>
               </p>
+              <div className="flex flex-wrap gap-2">
+                <Link href="/map-editor" locale={locale} className="btn-secondary border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                  Editeur de carte
+                </Link>
+              </div>
               <form action={logout}>
                 <button type="submit" className="btn-secondary border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100">
                   Se deconnecter
@@ -45,6 +50,9 @@ export default async function Home({
                 </Link>
                 <Link href="/register" locale={locale} className="btn-secondary border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100">
                   Creer un compte
+                </Link>
+                <Link href="/map-editor" locale={locale} className="btn-secondary border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100">
+                  Editeur de carte
                 </Link>
               </div>
             </div>

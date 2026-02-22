@@ -523,10 +523,110 @@ Limites restantes:
 - les des d attaque optimistes peuvent diverger du serveur (corriges par patch/resync)
 - pas encore de resync automatique periodique en cas de divergence silencieuse
 
-## 17. Roadmap naturelle (V2)
+## 17. Editeur de map (guide pratique)
+
+Route: `/fr/map-editor`
+
+L editeur sert a construire une map jouable a partir d un SVG (paths), puis exporter:
+
+- `definition.json` (modele metier utilise par le serveur)
+- `*-grouped.svg` (SVG fusionne par territoires logiques)
+
+### Flux recommande
+
+1. Cliquer sur `Importer SVG` et charger le fichier source.
+2. Verifier `Map key`, `Nom`, `Version`, `ViewBox`.
+3. Creer les groupes de territoires si un meme territoire est compose de plusieurs iles (`Grouper A+B`).
+4. Creer les connexions entre territoires (`Creer/Supprimer connexion A-B`).
+5. Affecter chaque territoire a un continent (panel `Continent` a droite).
+6. Ajuster les centroids (`Auto centroid A`, `Auto centroid tous`, ou `Placer centroid A`).
+7. Cliquer sur `Generer JSON` puis copier le contenu dans `definition.json`.
+8. Cliquer sur `Exporter SVG groupe` et sauver le resultat en `master.svg`.
+
+### Selection et navigation
+
+- Clic sur un path:
+  - selectionne le groupe si le path appartient a un groupe de taille > 1
+  - sinon selectionne le territoire seul
+- `Ctrl`/`Cmd` + clic: force la selection solo (meme si groupe).
+- Clic sur le centroid: selectionne le groupe.
+- Re-clic sur la meme selection A/B: deselection.
+- Pan:
+  - `Shift + drag` n importe ou sur la carte
+  - ou drag sur fond vide
+- Zoom:
+  - molette souris dans la carte
+  - la page ne zoome pas pendant ce zoom carte
+
+### Affichages utiles
+
+- `Liens`: affiche les connexions.
+- `Centroids`: affiche/masque les centroids.
+- `Continents`: colorie les paths selon leur continent (gris si non assigne).
+- Les liens survoles passent au dessus des autres elements.
+
+### Groupes et centroids
+
+- Un groupe represente un seul territoire logique en jeu.
+- Un groupe doit avoir un nom/key unique coherent.
+- Les membres d un groupe partagent le meme centroid logique.
+- `Degrouper A` rend chaque path independant (un territoire par path).
+
+### Continents
+
+Panel `Continents`:
+
+- `Ajouter` cree un continent.
+- Champs par continent:
+  - `Key` (identifiant technique)
+  - `Nom`
+  - `Bonus` (renfort de continent)
+  - `Couleur` (color picker + valeur texte)
+
+Panel `Territoires` (territoire A selectionne):
+
+- `Key du territoire`
+- `Nom du territoire`
+- `Continent` (liste deroulante)
+
+### Sauvegarde locale anti-refresh
+
+L etat de l editeur est sauvegarde automatiquement dans `localStorage` (cle `map_editor_state_v1`):
+
+- map meta (`mapKey`, `mapName`, `version`, `viewBox`)
+- territoires/continents
+- selections A/B et mode group/solo
+- zoom/pan et toggles d affichage
+
+Pour repartir de zero:
+
+- vider `localStorage` du site (ou supprimer la cle `map_editor_state_v1`)
+- ou reimporter un nouveau SVG propre
+
+### Integrer une nouvelle map dans le jeu
+
+1. Creer un dossier: `app/lib/game/maps/<map_key>/`
+2. Mettre:
+   - `app/lib/game/maps/<map_key>/definition.json`
+   - `app/lib/game/maps/<map_key>/master.svg`
+3. Respecter:
+   - nom de dossier = `mapKey`
+   - `mapKey` en snake_case minuscule (ex: `bridgerton_map`)
+4. Redemarrer le serveur dev/prod.
+
+Si erreur `Unknown map key "<x>"`:
+
+- le dossier `app/lib/game/maps/<x>/` n existe pas, ou
+- le fichier `definition.json` manque dans ce dossier.
+
+Si erreur `Unexpected end of JSON input`:
+
+- `definition.json` est vide ou tronque (JSON invalide).
+
+## 18. Roadmap naturelle (V2)
 
 - bonus de continents
 - cartes objectifs
 - reconnexion plus robuste / reprise de session in-game
 - selection de plusieurs maps en production
-- editeur de map interne (optionnel)
+- ameliorations editeur de map (snapping, validation UX avancee)

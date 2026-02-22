@@ -272,6 +272,22 @@ export default function GameClient({
   const reinforcementIntroShowTimerRef = useRef<number | null>(null);
   const reinforcementIntroFadeTimerRef = useRef<number | null>(null);
   const reinforcementIntroClearTimerRef = useRef<number | null>(null);
+  const joinNameRef = useRef<string>(displayName);
+
+  useEffect(() => {
+    const normalizedProp = displayName.trim().slice(0, 50);
+    const guestFromStorage =
+      typeof window !== "undefined" ? (window.localStorage.getItem("guest_pseudo") ?? "").trim().slice(0, 50) : "";
+
+    const preferStoredGuest =
+      normalizedProp.length === 0 || (normalizedProp.startsWith("Guest-") && guestFromStorage.length > 0);
+    const resolvedName = (preferStoredGuest ? guestFromStorage : normalizedProp) || "Guest-Player";
+
+    joinNameRef.current = resolvedName;
+    if (resolvedName.startsWith("Guest-")) {
+      window.localStorage.setItem("guest_pseudo", resolvedName);
+    }
+  }, [displayName]);
 
   const recomputeProjectedState = useCallback(() => {
     const confirmed = confirmedRef.current;
@@ -340,7 +356,7 @@ export default function GameClient({
 
   useEffect(() => {
     const s = getSocket();
-    s.emit("join_game", { gameCode: code });
+    s.emit("join_game", { gameCode: code, name: joinNameRef.current });
 
     const onGameState = (payload: GameStateDTO) => {
       if (payload.gameCode !== code) return;
@@ -370,7 +386,7 @@ export default function GameClient({
       if (!confirmedRef.current) {
         setJoinError(toUserError(payload.reason));
       }
-      s.emit("join_game", { gameCode: code });
+      s.emit("join_game", { gameCode: code, name: joinNameRef.current });
     };
 
     const onFinished = (payload: { gameCode: string; winnerPlayerId: string | null }) => {
@@ -595,13 +611,15 @@ export default function GameClient({
       1250,
     );
     reinforcementIntroClearTimerRef.current = window.setTimeout(() => setReinforcementIntro(null), 1750);
+  }, [currentPhase, currentTurnPlayerId, gameState, isMyTurn, myPlayer?.reinforcements, turnNumber]);
 
+  useEffect(() => {
     return () => {
       if (reinforcementIntroShowTimerRef.current) window.clearTimeout(reinforcementIntroShowTimerRef.current);
       if (reinforcementIntroFadeTimerRef.current) window.clearTimeout(reinforcementIntroFadeTimerRef.current);
       if (reinforcementIntroClearTimerRef.current) window.clearTimeout(reinforcementIntroClearTimerRef.current);
     };
-  }, [currentPhase, currentTurnPlayerId, gameState, isMyTurn, myPlayer?.reinforcements, turnNumber]);
+  }, []);
 
   const pickTerritory = (territoryKey: string) => {
     if (!gameState || !isMyTurn || gameState.status !== "in_progress") return;

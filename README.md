@@ -70,6 +70,7 @@ Serveur: `http://localhost:3000`
 Route: `/fr`
 
 Fonctionnalites:
+
 - connexion / creation de compte (optionnel)
 - mode invite avec pseudo par defaut
 - saisir un code de salon
@@ -80,6 +81,7 @@ Fonctionnalites:
 Route: `/fr/lobby/[code]`
 
 Fonctionnalites:
+
 - liste des joueurs connectes
 - choix de la carte (actuellement `world-simplified`)
 - lancement de partie
@@ -90,16 +92,18 @@ Fonctionnalites:
 Route: `/fr/game/[code]`
 
 Fonctionnalites:
+
 - synchronisation temps reel de l etat
 - selection source/cible sur la carte
 - feedback d erreurs metier (adjacence, tour, etc.)
 - etat compact des dernieres actions
 
-## 5. Architecture backend jeu
+## 5. Architecture backend jeud
 
 ### Principe
 
 Serveur autoritaire:
+
 - le client envoie des intentions
 - le serveur valide les regles
 - le serveur persiste et diffuse l etat (`game_state`)
@@ -130,6 +134,7 @@ Tables principales:
   - historique d actions
 
 Legacy temporaire:
+
 - `Territory` est encore present pour compatibilite migration, mais la logique map active passe par `MapDefinition` + `MapTerritory`.
 
 ## 7. Socket events
@@ -218,6 +223,7 @@ npm run map:export:world
 ### Territoires multi-iles (un seul territoire logique)
 
 Supporte via un seul `pathData` avec plusieurs sous-chemins:
+
 - format: `M...Z M...Z ...`
 - ou plusieurs `<path>` avec meme id, puis fusion via `map:merge-paths:world`
 
@@ -313,7 +319,162 @@ npm run map:merge-paths:world
 npm run map:export:world
 ```
 
-## 14. Depannage rapide
+## 14. Mise en ligne VPS (setup actuel)
+
+Ce projet tourne en production sur un VPS avec:
+
+- Node.js 22
+- service `systemd` (`tfe.service`)
+- Nginx en reverse proxy vers l app Node (`127.0.0.1:3000`)
+- PostgreSQL heberge sur Neon (via `DATABASE_URL`)
+
+### Pre-requis VPS
+
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y git curl nginx
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v
+npm -v
+```
+
+### Code + dependencies
+
+```bash
+cd /var/www
+sudo mkdir -p tfe
+sudo chown $USER:$USER tfe
+cd tfe
+git clone <REPO_GIT> .
+npm ci
+```
+
+### Variables d environnement
+
+Utiliser le meme format `.env` que le dev local:
+
+```env
+DATABASE_URL="postgresql://...neon..."
+SECRET='...'
+```
+
+Le serveur lit `SECRET` (fallback de `SESSION_SECRET`) dans `server.mjs`.
+
+### Prisma (cas base Neon deja non vide)
+
+Si `prisma migrate deploy` remonte `P3005` (schema non vide), baseliner la migration initiale:
+
+```bash
+npx prisma migrate resolve --applied 20260221170000_risk_mvp
+npx prisma migrate deploy
+```
+
+Puis build:
+
+```bash
+npx prisma generate
+npm run build
+```
+
+### Service systemd
+
+Fichier: `/etc/systemd/system/tfe.service`
+
+```ini
+[Unit]
+Description=TFE Next + Socket.IO
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/tfe
+ExecStart=/usr/bin/npm run start
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=PORT=3000
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Activation:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable tfe
+sudo systemctl start tfe
+sudo systemctl status tfe
+```
+
+Logs:
+
+```bash
+journalctl -u tfe -f
+```
+
+### Nginx sans domaine (acces par IP)
+
+Fichier: `/etc/nginx/sites-available/tfe`
+
+```nginx
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name _;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+```
+
+Activation:
+
+```bash
+# Si Apache ecoute deja sur le port 80, le stopper
+sudo systemctl stop apache2
+sudo systemctl disable apache2
+
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo ln -sf /etc/nginx/sites-available/tfe /etc/nginx/sites-enabled/tfe
+sudo nginx -t
+sudo systemctl restart nginx
+```
+
+Verification:
+
+```bash
+curl -I http://127.0.0.1:3000
+curl -I http://127.0.0.1
+```
+
+- App: `http://<IP_VPS>/fr`
+- Socket.IO: passe via Nginx sur `/socket.io`
+
+### Mise a jour de prod
+
+```bash
+cd /var/www/tfe
+git pull
+npm ci
+npx prisma migrate deploy
+npm run build
+sudo systemctl restart tfe
+```
+
+## 15. Depannage rapide
 
 - Erreur Prisma `table ... does not exist`:
   - executer migration Prisma sur la bonne base (`DATABASE_URL`)
@@ -325,20 +486,23 @@ npm run map:export:world
   - nommer les layers Figma au plus proche des keys metier
   - appliquer workflow map complet (fix + merge + export)
 
-## 15. Problemes rencontres
+## 16. Problemes rencontres
 
 ### Lenteur des actions en jeu
 
 Probleme observe:
+
 - chaque action etait suivie d un `game_state` complet emis a tous les clients
 - ce snapshot complet (joueurs + 42 territoires + logs) augmentait la latence percue
 - l interface donnait une impression de reponse lente apres clic
 
 Cause technique:
+
 - payload socket trop volumineux pour une operation qui modifie souvent seulement 1 a 2 territoires
 - reconciliation React inutilement large a chaque action
 
 Correction appliquee:
+
 - passage a un flux incremental `action_applied`
 - envoi d un patch minimal:
   - territoires modifies
@@ -348,16 +512,18 @@ Correction appliquee:
 - conservation de `game_state` complet pour `join_game` et resync
 
 Resultat:
+
 - meilleur temps de reaction percu sur les actions
 - reduction du trafic socket par action
 - aucune perte du modele serveur autoritaire
 - actions visibles instantanement cote client (optimiste)
 
 Limites restantes:
+
 - les des d attaque optimistes peuvent diverger du serveur (corriges par patch/resync)
 - pas encore de resync automatique periodique en cas de divergence silencieuse
 
-## 16. Roadmap naturelle (V2)
+## 17. Roadmap naturelle (V2)
 
 - bonus de continents
 - cartes objectifs

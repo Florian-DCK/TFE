@@ -240,7 +240,14 @@ io.on("connection", (socket) => {
     emitLobbyState(code);
   });
 
-  socket.on("join_game", async ({ gameCode }) => {
+  socket.on("join_game", async (payload = {}) => {
+    const gameCode = typeof payload?.gameCode === "string" ? payload.gameCode : "";
+    const providedName =
+      typeof payload?.name === "string" ? payload.name.trim().slice(0, 50) : "";
+    if (providedName) {
+      socket.data.name = providedName;
+    }
+
     const state = await getGameStateDTO(prisma, gameCode);
     if (!state) {
       socket.emit("action_rejected", { reason: "Game not found." });

@@ -16,6 +16,13 @@ import PlayerSidebar from "./PlayerSidebar";
 
 type Feedback = { kind: "success" | "error" | "info"; message: string };
 type PendingAction = { action: ClientAction };
+type CaptureFillAnimation = {
+  id: string;
+  toTerritoryKey: string;
+  fromTerritoryKey: string;
+  previousOwnerPlayerId: string;
+  newOwnerPlayerId: string;
+};
 type BattleSummary = {
   attackerName: string;
   defenderName: string;
@@ -27,7 +34,11 @@ type BattleSummary = {
   defenderLosses: number;
 };
 type CombatOverlay = { stage: "rolling" } | null;
-type OpponentVisual = { fromTerritoryKey: string | null; toTerritoryKey: string | null } | null;
+type ActionVisual = {
+  fromTerritoryKey: string | null;
+  toTerritoryKey: string | null;
+  actorIsMe: boolean;
+} | null;
 type TroopPopup = { id: string; territoryKey: string; amount: number; kind: "loss" | "gain" };
 type PhaseIntro = {
   phase: "reinforce" | "attack" | "fortify";
@@ -254,11 +265,12 @@ export default function GameClient({
   const [pendingCount, setPendingCount] = useState(0);
   const [pendingAttackCount, setPendingAttackCount] = useState(0);
   const [combatOverlay, setCombatOverlay] = useState<CombatOverlay>(null);
-  const [opponentIntentVisual, setOpponentIntentVisual] = useState<OpponentVisual>(null);
-  const [opponentActionVisual, setOpponentActionVisual] = useState<OpponentVisual>(null);
+  const [opponentIntentVisual, setOpponentIntentVisual] = useState<ActionVisual>(null);
+  const [opponentActionVisual, setOpponentActionVisual] = useState<ActionVisual>(null);
   const [floatingNotice, setFloatingNotice] = useState<Feedback | null>(null);
   const [floatingNoticeVisible, setFloatingNoticeVisible] = useState(false);
   const [troopPopups, setTroopPopups] = useState<TroopPopup[]>([]);
+  const [captureFillAnimations, setCaptureFillAnimations] = useState<CaptureFillAnimation[]>([]);
   const [phaseIntro, setPhaseIntro] = useState<PhaseIntro>(null);
   const [lastBattleSummary, setLastBattleSummary] = useState<BattleSummary | null>(null);
 
@@ -284,7 +296,7 @@ export default function GameClient({
   const pendingActionsRef = useRef<PendingAction[]>([]);
   const myPlayerIdRef = useRef<string | null>(null);
   const opponentActionVisualTimerRef = useRef<number | null>(null);
-  const opponentIntentVisualRef = useRef<OpponentVisual>(null);
+  const opponentIntentVisualRef = useRef<ActionVisual>(null);
   const animatedLogIdsRef = useRef<Set<string>>(new Set());
   const phaseIntroKeyRef = useRef<string>("");
   const phaseIntroShowTimerRef = useRef<number | null>(null);
@@ -329,6 +341,13 @@ export default function GameClient({
     window.setTimeout(() => {
       setTroopPopups((prev) => prev.filter((entry) => entry.id !== popup.id));
     }, 1150);
+  }, []);
+
+  const queueCaptureFillAnimation = useCallback((animation: CaptureFillAnimation) => {
+    setCaptureFillAnimations((prev) => [...prev, animation]);
+    window.setTimeout(() => {
+      setCaptureFillAnimations((prev) => prev.filter((entry) => entry.id !== animation.id));
+    }, 900);
   }, []);
 
   const animateTroopPopupsFromLog = useCallback(
@@ -384,7 +403,7 @@ export default function GameClient({
     opponentIntentVisualRef.current = opponentIntentVisual;
   }, [opponentIntentVisual]);
 
-  const setOpponentActionVisualWithTTL = useCallback((next: OpponentVisual, ttlMs = 2200) => {
+  const setOpponentActionVisualWithTTL = useCallback((next: ActionVisual, ttlMs = 2200) => {
     if (opponentActionVisualTimerRef.current) {
       window.clearTimeout(opponentActionVisualTimerRef.current);
       opponentActionVisualTimerRef.current = null;
@@ -466,6 +485,45 @@ export default function GameClient({
 
     const onActionApplied = (patch: GameStatePatchDTO) => {
       if (patch.gameCode !== code) return;
+      const previousConfirmed = confirmedRef.current;
+      if (previousConfirmed && patch.territories?.length) {
+        for (const territoryPatch of patch.territories) {
+          if (!territoryPatch.territoryKey || typeof territoryPatch.ownerPlayerId !== "string") continue;
+          const previousTerritory = previousConfirmed.territories.find(
+            (territory) => territory.territoryKey === territoryPatch.territoryKey,
+          );
+          if (
+            !previousTerritory ||
+            !previousTerritory.ownerPlayerId ||
+            previousTerritory.ownerPlayerId === territoryPatch.ownerPlayerId
+          ) {
+            continue;
+          }
+
+          let fromTerritoryKey: string | null = null;
+          for (let i = previousConfirmed.logs.length - 1; i >= 0; i -= 1) {
+            const log = previousConfirmed.logs[i];
+            if (log.type !== "attack") continue;
+            const raw = log.payload as Record<string, unknown>;
+            const to = typeof raw.toTerritoryKey === "string" ? raw.toTerritoryKey : null;
+            if (to !== territoryPatch.territoryKey) continue;
+            const from = typeof raw.fromTerritoryKey === "string" ? raw.fromTerritoryKey : null;
+            if (from) {
+              fromTerritoryKey = from;
+              break;
+            }
+          }
+
+          if (!fromTerritoryKey) continue;
+          queueCaptureFillAnimation({
+            id: `capture-${territoryPatch.territoryKey}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            toTerritoryKey: territoryPatch.territoryKey,
+            fromTerritoryKey,
+            previousOwnerPlayerId: previousTerritory.ownerPlayerId,
+            newOwnerPlayerId: territoryPatch.ownerPlayerId,
+          });
+        }
+      }
       if (confirmedRef.current) {
         confirmedRef.current = applyGamePatch(confirmedRef.current, patch);
       }
@@ -532,18 +590,19 @@ export default function GameClient({
         setCombatOverlay(null);
       }
 
-      if (payload.actorPlayerId && payload.actorPlayerId !== myPlayerIdRef.current) {
+      if (payload.actorPlayerId) {
         const raw = payload.payload as Record<string, unknown>;
+        const actorIsMe = payload.actorPlayerId === myPlayerIdRef.current;
         if ((payload.type === "attack" || payload.type === "fortify") && !opponentIntentVisualRef.current) {
           const from = typeof raw.fromTerritoryKey === "string" ? raw.fromTerritoryKey : null;
           const to = typeof raw.toTerritoryKey === "string" ? raw.toTerritoryKey : null;
           if (from || to) {
-            setOpponentActionVisualWithTTL({ fromTerritoryKey: from, toTerritoryKey: to }, 2400);
+            setOpponentActionVisualWithTTL({ fromTerritoryKey: from, toTerritoryKey: to, actorIsMe }, 2400);
           }
         } else if (payload.type === "place_reinforcement" && !opponentIntentVisualRef.current) {
           const at = typeof raw.territoryKey === "string" ? raw.territoryKey : null;
           if (at) {
-            setOpponentActionVisualWithTTL({ fromTerritoryKey: at, toTerritoryKey: null }, 1800);
+            setOpponentActionVisualWithTTL({ fromTerritoryKey: at, toTerritoryKey: null, actorIsMe }, 1800);
           }
         }
       }
@@ -565,6 +624,7 @@ export default function GameClient({
       setOpponentIntentVisual({
         fromTerritoryKey: payload.fromTerritoryKey,
         toTerritoryKey: payload.toTerritoryKey,
+        actorIsMe: false,
       });
     };
 
@@ -589,7 +649,7 @@ export default function GameClient({
       s.off("connect", tryJoinGame);
       s.emit("leave_game", { gameCode: code });
     };
-  }, [animateTroopPopupsFromLog, code, recomputeProjectedState, setOpponentActionVisualWithTTL]);
+  }, [animateTroopPopupsFromLog, code, queueCaptureFillAnimation, recomputeProjectedState, setOpponentActionVisualWithTTL]);
 
   useEffect(() => {
     if (!gameState?.logs?.length) return;
@@ -602,16 +662,27 @@ export default function GameClient({
     () => new Map(gameState?.territories.map((t) => [t.territoryKey, t]) ?? []),
     [gameState],
   );
-  const effectiveOpponentVisual = opponentIntentVisual ?? opponentActionVisual;
+  const isMyTurn = Boolean(myPlayerId) && gameState?.currentTurnPlayerId === myPlayerId;
+  const currentPhase = gameState?.currentPhase ?? "reinforce";
+  const localActionVisual = useMemo<ActionVisual>(() => {
+    if (!isMyTurn || !gameState || gameState.status !== "in_progress") return null;
+    if (currentPhase === "reinforce") {
+      if (!reinforcePrompt?.territoryKey) return null;
+      return { fromTerritoryKey: null, toTerritoryKey: reinforcePrompt.territoryKey, actorIsMe: true };
+    }
+    if (currentPhase === "attack" || currentPhase === "fortify") {
+      if (!selectedFrom) return null;
+      return { fromTerritoryKey: selectedFrom, toTerritoryKey: selectedTo, actorIsMe: true };
+    }
+    return null;
+  }, [currentPhase, gameState, isMyTurn, reinforcePrompt?.territoryKey, selectedFrom, selectedTo]);
+  const effectiveOpponentVisual = localActionVisual ?? opponentIntentVisual ?? opponentActionVisual;
   const myPlayer = useMemo(
     () => gameState?.players.find((player) => player.id === myPlayerId) ?? null,
     [gameState?.players, myPlayerId],
   );
   const turnNumber = gameState?.turnNumber ?? 0;
   const currentTurnPlayerId = gameState?.currentTurnPlayerId ?? null;
-
-  const isMyTurn = Boolean(myPlayerId) && gameState?.currentTurnPlayerId === myPlayerId;
-  const currentPhase = gameState?.currentPhase ?? "reinforce";
 
   const sendAction = (action: ClientAction) => {
     const parsed = submitActionSchema.safeParse(action);
@@ -880,6 +951,8 @@ export default function GameClient({
           onDeselect={deselect}
           opponentFromTerritoryKey={effectiveOpponentVisual?.fromTerritoryKey ?? null}
           opponentToTerritoryKey={effectiveOpponentVisual?.toTerritoryKey ?? null}
+          opponentActorIsMe={effectiveOpponentVisual?.actorIsMe ?? false}
+          captureFillAnimations={captureFillAnimations}
           troopPopups={troopPopups}
         />
       </section>
@@ -985,7 +1058,7 @@ export default function GameClient({
 
       <div className="pointer-events-none absolute bottom-5 left-0 right-0 z-30 flex justify-center px-2">
         <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-2 rounded-xl border border-emerald-200/80 bg-white/90 p-2 shadow-lg backdrop-blur">
-          {isMyTurn && currentPhase === "attack" && (
+          {isMyTurn && currentPhase === "attack" && !attackPrompt && (
             <button className="btn-secondary border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100" onClick={() => sendAction({ type: "end_attack_phase" })}>
               Passer a la fortification
             </button>
@@ -1048,8 +1121,8 @@ export default function GameClient({
       )}
 
       {attackPrompt && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/35 p-4">
-          <div className="panel w-full max-w-md p-4">
+        <div className="pointer-events-none absolute bottom-5 left-0 right-0 z-40 flex justify-center px-2">
+          <div className="pointer-events-auto panel w-full max-w-md p-4 shadow-2xl">
             {(() => {
               const fromTroops = territoryByKey.get(attackPrompt.from)?.troops ?? 2;
               const toTroops = territoryByKey.get(attackPrompt.to)?.troops ?? 1;
@@ -1080,7 +1153,16 @@ export default function GameClient({
               }
             />
             <div className="mt-4 flex justify-end gap-2">
-              <button className="btn-secondary" onClick={() => setAttackPrompt(null)}>Annuler</button>
+              <button
+                className="btn-secondary"
+                onClick={() => {
+                  setAttackPrompt(null);
+                  setSelectedTo(null);
+                  emitIntent(attackPrompt.from, null);
+                }}
+              >
+                Annuler
+              </button>
               <button
                 className="btn-primary"
                 onClick={() => {

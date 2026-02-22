@@ -13,6 +13,13 @@ type Edge = {
 };
 
 type ViewMode = "normal" | "continents";
+type CaptureFillAnimation = {
+  id: string;
+  toTerritoryKey: string;
+  fromTerritoryKey: string;
+  previousOwnerPlayerId: string;
+  newOwnerPlayerId: string;
+};
 
 function hexToRgb(hex: string) {
   const normalized = hex.replace("#", "");
@@ -136,6 +143,8 @@ export default function MapBoard({
   onDeselect,
   opponentFromTerritoryKey,
   opponentToTerritoryKey,
+  opponentActorIsMe = false,
+  captureFillAnimations = [],
   troopPopups = [],
 }: {
   gameState: GameStateDTO;
@@ -150,6 +159,8 @@ export default function MapBoard({
   onDeselect: () => void;
   opponentFromTerritoryKey?: string | null;
   opponentToTerritoryKey?: string | null;
+  opponentActorIsMe?: boolean;
+  captureFillAnimations?: CaptureFillAnimation[];
   troopPopups?: Array<{ id: string; territoryKey: string; amount: number; kind: "loss" | "gain" }>;
 }) {
   const [showConnections, setShowConnections] = useState(true);
@@ -271,15 +282,41 @@ export default function MapBoard({
       })
       .filter(Boolean);
   }, [continentByKey, gameState.territories]);
+  const captureByTerritory = useMemo(
+    () => new Map(captureFillAnimations.map((animation) => [animation.toTerritoryKey, animation])),
+    [captureFillAnimations],
+  );
 
   const opponentFrom = opponentFromTerritoryKey ? territoryByKey.get(opponentFromTerritoryKey) : null;
   const opponentTo = opponentToTerritoryKey ? territoryByKey.get(opponentToTerritoryKey) : null;
+  const [vbX, vbY, vbW, vbH] = gameState.map.viewBox.split(/\s+/).map((v) => Number(v));
+  const reserveX = Number.isFinite(vbX) && Number.isFinite(vbW) ? vbX + vbW * 0.08 : 40;
+  const reserveY = Number.isFinite(vbY) && Number.isFinite(vbH) ? vbY + vbH * 0.1 : 40;
+  const actionArrowColor = opponentActorIsMe ? "#22d3ee" : "#dc2626";
+  const opponentFromLiftY =
+    opponentActorIsMe && opponentFrom?.territoryKey
+      ? getLiftYForTerritory(opponentFrom.territoryKey, selectedFrom, selectedTo, hoveredTerritoryKey)
+      : 0;
+  const opponentToLiftY =
+    opponentActorIsMe && opponentTo?.territoryKey
+      ? getLiftYForTerritory(opponentTo.territoryKey, selectedFrom, selectedTo, hoveredTerritoryKey)
+      : 0;
   const opponentArrowPath = useMemo(() => {
-    if (!opponentFrom || !opponentTo) return null;
-    const ax = opponentFrom.centroid.x;
-    const ay = opponentFrom.centroid.y;
-    const bx = opponentTo.centroid.x;
-    const by = opponentTo.centroid.y;
+    const fromPoint = opponentFrom
+      ? { x: opponentFrom.centroid.x, y: opponentFrom.centroid.y + opponentFromLiftY }
+      : null;
+    const toPoint = opponentTo
+      ? { x: opponentTo.centroid.x, y: opponentTo.centroid.y + opponentToLiftY }
+      : null;
+
+    const start = fromPoint ?? (toPoint ? { x: reserveX, y: reserveY } : null);
+    const end = toPoint ?? fromPoint;
+    if (!start || !end) return null;
+
+    const ax = start.x;
+    const ay = start.y;
+    const bx = end.x;
+    const by = end.y;
     const mx = (ax + bx) / 2;
     const my = (ay + by) / 2;
     const dx = bx - ax;
@@ -291,7 +328,7 @@ export default function MapBoard({
     const cx = mx + nx * curve;
     const cy = my + ny * curve;
     return `M ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}`;
-  }, [opponentFrom, opponentTo]);
+  }, [opponentFrom, opponentFromLiftY, opponentTo, opponentToLiftY, reserveX, reserveY]);
 
   return (
     <div
@@ -343,8 +380,11 @@ export default function MapBoard({
         }}
       >
         <defs>
-          <marker id="opponent-arrow-head" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <marker id="opponent-arrow-head-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#dc2626" />
+          </marker>
+          <marker id="opponent-arrow-head-cyan" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#22d3ee" />
           </marker>
           <filter id="territory-relief" x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="-1.2" dy="1.2" stdDeviation="0.7" floodColor="#ffffff" floodOpacity="0.45" />
@@ -411,6 +451,16 @@ export default function MapBoard({
           const baseFillColor =
             viewMode === "continents" ? continentColor : ownerFillHexColor(territory.ownerPlayerId, myPlayerId);
           const fillColor = shouldDim ? mixHex(baseFillColor, "#0f172a", 0.32) : baseFillColor;
+          const captureAnimation = captureByTerritory.get(territory.territoryKey) ?? null;
+          const captureFrom = captureAnimation ? territoryByKey.get(captureAnimation.fromTerritoryKey) : null;
+          const captureOverlayColor = captureAnimation
+            ? ownerFillHexColor(captureAnimation.previousOwnerPlayerId, myPlayerId)
+            : null;
+          const captureClipId = captureAnimation ? `capture-clip-${captureAnimation.id}` : null;
+          const captureAngleDeg =
+            captureAnimation && captureFrom
+              ? (Math.atan2(territory.centroid.y - captureFrom.centroid.y, territory.centroid.x - captureFrom.centroid.x) * 180) / Math.PI
+              : 0;
 
           return (
             <g
@@ -437,6 +487,36 @@ export default function MapBoard({
                 pointerEvents="all"
                 filter={isFrom || isTo || hovered ? "url(#territory-relief-active)" : "url(#territory-relief)"}
               />
+              {captureAnimation && captureOverlayColor && captureClipId && captureFrom && (
+                <>
+                  <defs>
+                    <clipPath id={captureClipId}>
+                      <g transform={`rotate(${captureAngleDeg} ${territory.centroid.x} ${territory.centroid.y})`}>
+                        <rect
+                          x={territory.centroid.x - 2200}
+                          y={territory.centroid.y - 2200}
+                          width={4400}
+                          height={4400}
+                        >
+                          <animate
+                            attributeName="x"
+                            from={territory.centroid.x - 2200}
+                            to={territory.centroid.x + 2200}
+                            dur="0.85s"
+                            fill="freeze"
+                          />
+                        </rect>
+                      </g>
+                    </clipPath>
+                  </defs>
+                  <path
+                    d={territory.pathData}
+                    fill={captureOverlayColor}
+                    clipPath={`url(#${captureClipId})`}
+                    pointerEvents="none"
+                  />
+                </>
+              )}
 
               <path
                 d={territory.pathData}
@@ -583,34 +663,44 @@ export default function MapBoard({
               <path
                 d={opponentFrom.pathData}
                 fill="none"
-                stroke="#dc2626"
+                stroke={actionArrowColor}
                 strokeWidth={4}
                 strokeOpacity={1}
-                style={{ filter: "drop-shadow(0px 0px 6px rgba(220,38,38,0.55))" }}
+                transform={opponentFromLiftY !== 0 ? `translate(0 ${opponentFromLiftY})` : undefined}
+                style={{ filter: "drop-shadow(0px 0px 6px rgba(15,23,42,0.5))" }}
               />
             )}
             {opponentTo && (
               <path
                 d={opponentTo.pathData}
                 fill="none"
-                stroke="#dc2626"
+                stroke={actionArrowColor}
                 strokeWidth={4}
                 strokeOpacity={1}
                 strokeDasharray="7 4"
-                style={{ filter: "drop-shadow(0px 0px 6px rgba(220,38,38,0.55))" }}
+                transform={opponentToLiftY !== 0 ? `translate(0 ${opponentToLiftY})` : undefined}
+                style={{ filter: "drop-shadow(0px 0px 6px rgba(15,23,42,0.5))" }}
               />
             )}
             {opponentArrowPath && (
-              <path
-                d={opponentArrowPath}
-                fill="none"
-                stroke="#dc2626"
-                strokeWidth={3.5}
-                strokeOpacity={1}
-                markerEnd="url(#opponent-arrow-head)"
-                strokeLinecap="round"
-                style={{ filter: "drop-shadow(0px 0px 5px rgba(220,38,38,0.45))" }}
-              />
+              <>
+                <path
+                  d={opponentArrowPath}
+                  fill="none"
+                  stroke={actionArrowColor}
+                  strokeWidth={3.5}
+                  strokeOpacity={1}
+                  markerEnd={opponentActorIsMe ? "url(#opponent-arrow-head-cyan)" : "url(#opponent-arrow-head-red)"}
+                  strokeLinecap="round"
+                  strokeDasharray="12 8"
+                  style={{ filter: "drop-shadow(0px 0px 5px rgba(15,23,42,0.45))" }}
+                >
+                  <animate attributeName="stroke-dashoffset" from="0" to="-40" dur="0.85s" repeatCount="indefinite" />
+                </path>
+                <circle r={4.2} fill={actionArrowColor}>
+                  <animateMotion dur="0.75s" repeatCount="indefinite" path={opponentArrowPath} keyPoints="0;0.9" keyTimes="0;1" calcMode="linear" />
+                </circle>
+              </>
             )}
           </g>
         )}
